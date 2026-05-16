@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#F0EAD6"/>
+  <text x="50%" y="50%" dy="0.34em" text-anchor="middle"
+        font-family="Georgia, 'Iowan Old Style', serif" font-size="300" font-weight="500" fill="#2A2418">Ink<tspan fill="#3D4A7A">.</tspan></text>
+</svg>

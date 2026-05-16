@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ink — Journal</title>
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" rel="stylesheet">
+<style>
+  :root {
+    --bg:          #F0EAD6;
+    --bg-deep:     #E6DFC6;
+    --text:        #2A2418;
+    --text-soft:   #3D362A;
+    --muted:       #6B5F4A;
+    --hint:        #8A7D62;
+    --whisper:     #A89976;
+    --accent:      #3D4A7A;
+    --accent-soft: #7A85AB;
+    --accent-faint:#C7CCDF;
+    --card-bg:     #E8E0C8;
+    --border:      #D6CCAE;
+    --hairline:    #E2D9BE;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; }
+  body {
+    background: #DDD4B8;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    min-height: 100vh;
+    padding: 48px 24px;
+    color: var(--text);
+  }
+  .container { max-width: 600px; margin: 0 auto; }
+  .phone-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .phone-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .phone-label span { color: var(--accent); }
+  .phone {
+    width: 380px;
+    height: 760px;
+    background: var(--bg);
+    border-radius: 32px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 12px 36px rgba(60,50,30,0.18);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Top bar */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 22px 14px;
+    flex-shrink: 0;
+  }
+  .back {
+    color: var(--muted);
+    font-size: 18px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+  }
+  .screen-title {
+    font-family: Georgia, "Iowan Old Style", serif;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: 0.3px;
+  }
+  .search-icon {
+    color: var(--muted);
+    font-size: 18px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  /* Filter chips row */
+  .chips-row {
+    display: flex;
+    gap: 6px;
+    padding: 0 22px 14px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-shrink: 0;
+  }
+  .chips-row::-webkit-scrollbar { display: none; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 0.5px solid var(--border);
+    background: transparent;
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+    letter-spacing: 0.2px;
+  }
+  .chip.active {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+  .chip .count {
+    font-size: 10px;
+    opacity: 0.7;
+    font-variant-numeric: tabular-nums;
+  }
+  .chip i {
+    font-size: 12px;
+  }
+
+  /* Month divider */
+  .month-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 22px 8px;
+    flex-shrink: 0;
+  }
+  .month-divider .line {
+    flex: 1;
+    height: 0.5px;
+    background: var(--border);
+  }
+  .month-divider .label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--whisper);
+    text-transform: uppercase;
+  }
+
+  /* Timeline scroll area */
+  .timeline {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 22px 14px;
+  }
+
+  /* Entry rows — different layouts by type */
+  .entry {
+    padding: 12px 0;
+    border-bottom: 0.5px solid var(--hairline);
+    display: flex;
+    gap: 12px;
+  }
+  .entry:last-child { border-bottom: none; }
+
+  .entry-date {
+    width: 38px;
+    flex-shrink: 0;
+    text-align: center;
+    padding-top: 2px;
+  }
+  .entry-day {
+    font-family: Georgia, "Iowan Old Style", serif;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1;
+  }
+  .entry-dow {
+    font-size: 9px;
+    color: var(--whisper);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .entry-body { flex: 1; min-width: 0; }
+  .entry-type-line {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 4px;
+  }
+  .entry-type-icon {
+    font-size: 11px;
+    color: var(--accent);
+  }
+  .entry-type-label {
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  /* Day log entry */
+  .entry-prose {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+  }
+  .entry-tags {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--hint);
+  }
+  .entry-tags span { display: inline-flex; align-items: center; gap: 3px; }
+  .entry-tags i { font-size: 10.5px; color: var(--whisper); }
+
+  /* Restaurant entry */
+  .entry-rest-name {
+    font-size: 14.5px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+  .entry-rest-meta {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.4;
+    margin-bottom: 4px;
+  }
+  .entry-rest-note {
+    font-family: Georgia, "Iowan Old Style", serif;
+    font-size: 12.5px;
+    font-style: italic;
+    color: var(--text-soft);
+    line-height: 1.5;
+  }
+
+  /* Media entry */
+  .entry-media {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .entry-media-title {
+    font-size: 14.5px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .entry-media-format {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--bg-deep);
+    border: 0.5px solid var(--border);
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .entry-media-note {
+    font-family: Georgia, "Iowan Old Style", serif;
+    font-size: 12.5px;
+    font-style: italic;
+    color: var(--text-soft);
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+  .entry-rating {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 1px;
+  }
+
+  /* Thought entry */
+  .entry-thought {
+    font-family: Georgia, "Iowan Old Style", serif;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--text-soft);
+    font-style: italic;
+  }
+
+  .annot {
+    margin-top: 32px;
+    background: #FFFBF0;
+    border: 0.5px solid #D6CCAE;
+    border-radius: 12px;
+    padding: 20px 24px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #4A3F28;
+  }
+  .annot h3 {
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 500;
+    margin-bottom: 6px;
+    margin-top: 14px;
+  }
+  .annot h3:first-child { margin-top: 0; }
+  .annot p { margin-bottom: 0; }
+
+  @media (prefers-color-scheme: dark) {
+    body { background: #1a1610; }
+    .annot { background: #2a2418; border-color: #4a3d28; color: #c8b896; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="phone-wrap">
+    <div class="phone-label">Ink · <span>Journal (read)</span></div>
+    <div class="phone">
+
+      <div class="topbar">
+        <i class="ti ti-arrow-left back" aria-label="Back"></i>
+        <div class="screen-title">Journal</div>
+        <i class="ti ti-search search-icon" aria-label="Search"></i>
+      </div>
+
+      <div class="chips-row">
+        <div class="chip active">All <span class="count">218</span></div>
+        <div class="chip"><i class="ti ti-book"></i> Days <span class="count">142</span></div>
+        <div class="chip"><i class="ti ti-tools-kitchen-2"></i> Restaurants <span class="count">31</span></div>
+        <div class="chip"><i class="ti ti-player-play"></i> Media <span class="count">28</span></div>
+        <div class="chip"><i class="ti ti-quote"></i> Thoughts <span class="count">12</span></div>
+        <div class="chip"><i class="ti ti-feather"></i> Reflections <span class="count">5</span></div>
+      </div>
+
+      <div class="month-divider">
+        <span class="label">May 2026</span>
+        <span class="line"></span>
+      </div>
+
+      <div class="timeline">
+
+        <!-- Day log entry with extracted tags -->
+        <div class="entry">
+          <div class="entry-date">
+            <div class="entry-day">15</div>
+            <div class="entry-dow">Fri</div>
+          </div>
+          <div class="entry-body">
+            <div class="entry-type-line">
+              <i class="ti ti-book entry-type-icon"></i>
+              <span class="entry-type-label">Day</span>
+            </div>
+            <div class="entry-prose">Finally got to Raoul's tonight with Mandy. Saw Conclave after.</div>
+            <div class="entry-tags">
+              <span><i class="ti ti-tools-kitchen-2"></i>Raoul's</span>
+              <span><i class="ti ti-user"></i>Mandy</span>
+              <span><i class="ti ti-player-play"></i>Conclave</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Restaurant visit (attached to same day, separate entry) -->
+        <div class="entry">
+          <div class="entry-date">
+            <div class="entry-day">15</div>
+            <div class="entry-dow">Fri</div>
+          </div>
+          <div class="entry-body">
+            <div class="entry-type-line">
+              <i class="ti ti-tools-kitchen-2 entry-type-icon"></i>
+              <span class="entry-type-label">Restaurant</span>
+            </div>
+            <div class="entry-rest-name">Raoul's</div>
+            <div class="entry-rest-meta">with Mandy · steak frites, Côtes du Rhône</div>
+            <div class="entry-rest-note">"Bordelaise sauce is the whole thing."</div>
+          </div>
+        </div>
+
+        <!-- Media entry -->
+        <div class="entry">
+          <div class="entry-date">
+            <div class="entry-day">15</div>
+            <div class="entry-dow">Fri</div>
+          </div>
+          <div class="entry-body">
+            <div class="entry-type-line">
+              <i class="ti ti-player-play entry-type-icon"></i>
+              <span class="entry-type-label">Media</span>
+            </div>
+            <div class="entry-media">
+              <span class="entry-media-title">Conclave</span>
+              <span class="entry-media-format">Film</span>
+            </div>
+            <div class="entry-media-note">Fiennes is incredible.</div>
+          </div>
+        </div>
+
+        <!-- Day log, earlier -->
+        <div class="entry">
+          <div class="entry-date">
+            <div class="entry-day">14</div>
+            <div class="entry-dow">Thu</div>
+          </div>
+          <div class="entry-body">
+            <div class="entry-type-line">
+              <i class="ti ti-book entry-type-icon"></i>
+              <span class="entry-type-label">Day</span>
+            </div>
+            <div class="entry-prose">Disc Golf in the park. Lentil bowls for dinner.</div>
+            <div class="entry-tags">
+              <span><i class="ti ti-triangle"></i>Disc Golf</span>
+              <span><i class="ti ti-chef-hat"></i>Lentil bowls</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Thought entry -->
+        <div class="entry">
+          <div class="entry-date">
+            <div class="entry-day">13</div>
+            <div class="entry-dow">Wed</div>
+          </div>
+          <div class="entry-body">
+            <div class="entry-type-line">
+              <i class="ti ti-quote entry-type-icon"></i>
+              <span class="entry-type-label">Thought</span>
+            </div>
+            <div class="entry-thought">There's something about working in Phrygian Dominant that feels like writing in a different language entirely. Same letters, different meaning.</div>
+          </div>
+        </div>
+
+        <!-- Media entry — book -->
+        <div class="entry">
+          <div class="entry-date">
+            <div class="entry-day">12</div>
+            <div class="entry-dow">Tue</div>
+          </div>
+          <div class="entry-body">
+            <div class="entry-type-line">
+              <i class="ti ti-player-play entry-type-icon"></i>
+              <span class="entry-type-label">Media</span>
+            </div>
+            <div class="entry-media">
+              <span class="entry-media-title">A Gentleman in Moscow</span>
+              <span class="entry-media-format">Book</span>
+            </div>
+            <div class="entry-media-note">Slow build, but the Count is one of the most charming characters I've read in years.</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <div class="annot">
+    <h3>The read surface</h3>
+    <p>Reached by long-press on home. Default filter is "All" — the full unified timeline. Tap any chip to filter to a single type. The count beside each chip is a passive insight: "31 restaurants this year" tells you something just by being there.</p>
+
+    <h3>Entry types render differently</h3>
+    <p>Each type gets its own row layout, but they share the same left rail (day number + day-of-week). Day log shows prose + extracted tags. Restaurant shows name as headline + structured meta line + italicized quoted note. Media shows title + format pill + italicized note. Thoughts render entirely in serif italic — a different visual register from the structured entries, signaling "this is reflection, not record."</p>
+
+    <h3>Three Friday entries from one write</h3>
+    <p>Look at May 15 — three entries stacked. The Raoul's writeup we drew in the + flow produced a primary Restaurant entry, an attached Day Log entry, and an attached Media entry for Conclave. They all share the same date but show separately in the timeline, each in their own native layout. Filter to "Restaurants" and you'd only see the Raoul's row.</p>
+
+    <h3>What's missing here that the spec needs</h3>
+    <p>Search (icon present, behavior TBD — probably searches across prose, place names, titles, and tags). Tap-to-drill on an entity (tap "Mandy" in tags → see all entries mentioning Mandy). Month divider becomes scroll-sticky when you scroll past it. Empty states per filter. These all belong in the spec doc, not in this mock.</p>
+  </div>
+</div>
+
+</body>
+</html>

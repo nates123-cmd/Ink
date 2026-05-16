@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ink — Home</title>
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" rel="stylesheet">
+<style>
+  :root {
+    --bg:          #F0EAD6;
+    --bg-deep:     #E6DFC6;
+    --text:        #2A2418;
+    --text-soft:   #3D362A;
+    --muted:       #6B5F4A;
+    --hint:        #8A7D62;
+    --whisper:     #A89976;
+    --accent:      #3D4A7A;
+    --accent-soft: #7A85AB;
+    --accent-faint:#C7CCDF;
+    --card-bg:     #E8E0C8;
+    --border:      #D6CCAE;
+    --hairline:    #E2D9BE;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; }
+  body {
+    background: #DDD4B8;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    min-height: 100vh;
+    padding: 48px 24px;
+    color: var(--text);
+  }
+  .container {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .phone-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .phone-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .phone-label span { color: var(--accent); }
+  .phone {
+    width: 380px;
+    height: 760px;
+    background: var(--bg);
+    border-radius: 32px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 12px 36px rgba(60,50,30,0.18);
+  }
+
+  .topbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 22px 24px 0;
+    z-index: 2;
+  }
+  .wordmark {
+    font-family: Georgia, "Iowan Old Style", serif;
+    font-size: 19px;
+    color: var(--text);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+  .wordmark .dot { color: var(--accent); }
+  .plus-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .plus-btn i { font-size: 18px; }
+
+  .edge-label {
+    position: absolute;
+    font-size: 10px;
+    letter-spacing: 3.5px;
+    color: var(--whisper);
+    pointer-events: none;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .edge-top { top: 84px; left: 50%; transform: translateX(-50%); }
+  .edge-bottom { bottom: 32px; left: 50%; transform: translateX(-50%); }
+  .edge-left {
+    top: 50%; left: 22px;
+    transform: translateY(-50%) rotate(-90deg);
+    transform-origin: center center;
+  }
+  .edge-right {
+    top: 50%; right: 22px;
+    transform: translateY(-50%) rotate(90deg);
+    transform-origin: center center;
+  }
+
+  .canvas-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 280px;
+    text-align: center;
+  }
+  .day-of-week {
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .big-date {
+    font-family: Georgia, "Iowan Old Style", serif;
+    font-size: 64px;
+    line-height: 1;
+    font-weight: 400;
+    color: var(--text);
+    letter-spacing: -2px;
+    margin-bottom: 8px;
+  }
+  .month-year {
+    font-size: 11px;
+    color: var(--whisper);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 36px;
+  }
+  .content-slot { margin-top: 8px; }
+  .prompt-label {
+    font-size: 9.5px;
+    color: var(--whisper);
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .prompt-text {
+    font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    font-size: 15.5px;
+    line-height: 1.55;
+    color: var(--text-soft);
+    font-style: italic;
+  }
+  .prompt-text .virtue {
+    color: var(--accent);
+    font-style: normal;
+    font-weight: 500;
+  }
+
+  .active-chip {
+    position: absolute;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: var(--bg-deep);
+    border: 0.5px solid var(--border);
+    border-radius: 999px;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+  .active-chip i { font-size: 11px; color: var(--accent); }
+
+  .long-press-hint {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    color: var(--whisper);
+    letter-spacing: 2px;
+    opacity: 0.55;
+    white-space: nowrap;
+  }
+
+  .annot {
+    margin-top: 32px;
+    background: #FFFBF0;
+    border: 0.5px solid #D6CCAE;
+    border-radius: 12px;
+    padding: 20px 24px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #4A3F28;
+  }
+  .annot h3 {
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 500;
+    margin-bottom: 6px;
+    margin-top: 14px;
+  }
+  .annot h3:first-child { margin-top: 0; }
+  .annot p { margin-bottom: 0; }
+
+  @media (prefers-color-scheme: dark) {
+    body { background: #1a1610; }
+    .annot { background: #2a2418; border-color: #4a3d28; color: #c8b896; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="phone-wrap">
+    <div class="phone-label">Ink · <span>Home</span></div>
+    <div class="phone">
+
+      <div class="topbar">
+        <div class="wordmark">Ink<span class="dot">.</span></div>
+        <div class="plus-btn" aria-label="New entry"><i class="ti ti-plus"></i></div>
+      </div>
+
+      <div class="edge-label edge-top">▲ TODAY</div>
+      <div class="edge-label edge-left">◀ STOIC</div>
+      <div class="edge-label edge-right">THOUGHTS ▶</div>
+      <div class="edge-label edge-bottom">REFLECT ▼</div>
+
+      <div class="canvas-center">
+        <div class="day-of-week">Friday</div>
+        <div class="big-date">15</div>
+        <div class="month-year">May · MMXXVI</div>
+
+        <div class="content-slot">
+          <div class="prompt-label">Morning Intention</div>
+          <div class="prompt-text">
+            You named <span class="virtue">temperance</span> as today's virtue. How has it shown up?
+          </div>
+        </div>
+      </div>
+
+      <div class="active-chip">
+        <i class="ti ti-flame"></i> 30-day sober · day 15
+      </div>
+
+      <div class="long-press-hint">LONG PRESS · OPEN JOURNAL</div>
+
+    </div>
+  </div>
+
+  <div class="annot">
+    <h3>Wordmark</h3>
+    <p>Ink. in serif Georgia — the period is the indigo accent. Full stop of a written sentence.</p>
+
+    <h3>The "+" button</h3>
+    <p>Top-right, filled indigo circle, 36×36. Unified write surface entry point. Tap to open the compose surface (write → review flow).</p>
+
+    <h3>Date as centerpiece</h3>
+    <p>Big serif "15" anchors the canvas. Friday above in muted gray, "May · MMXXVI" below in letterspaced caps. Reads like a manuscript page header. (Roman numeral year debatable — easy to swap for "2026" if too precious.)</p>
+
+    <h3>Rotating content slot</h3>
+    <p>Same priority as before: morning intention → mantra → quote. Voice shifted toward record-keeping — "how has it shown up" (retrospective) instead of "how is it going" (in-the-moment).</p>
+
+    <h3>Edge labels with arrows</h3>
+    <p>Tiny triangles indicate swipe direction. HABITS renamed to <strong style="color:var(--accent)">TODAY</strong> since that screen now holds both habits and the day log.</p>
+
+    <h3>Active challenge chip</h3>
+    <p>Quiet pill near the bottom — present only during an active challenge.</p>
+
+    <h3>Long-press hint</h3>
+    <p>9px letterspaced text at 55% opacity. Teaches the long-press → journal gesture, fades after first uses.</p>
+  </div>
+</div>
+
+</body>
+</html>

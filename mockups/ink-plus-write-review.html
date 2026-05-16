@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ink — Unified + Write Surface</title>
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" rel="stylesheet">
+<style>
+  :root {
+    /* Ink palette — aged paper + faded indigo */
+    --bg:          #F0EAD6;
+    --bg-deep:     #E6DFC6;
+    --text:        #2A2418;
+    --text-soft:   #3D362A;
+    --muted:       #6B5F4A;
+    --hint:        #8A7D62;
+    --whisper:     #A89976;
+    --accent:      #3D4A7A;
+    --accent-soft: #7A85AB;
+    --accent-faint:#C7CCDF;
+    --card-bg:     #E8E0C8;
+    --border:      #D6CCAE;
+    --hairline:    #E2D9BE;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #DDD4B8;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    min-height: 100vh;
+    padding: 32px 16px 48px;
+    color: var(--text);
+  }
+  .stage {
+    max-width: 880px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+  }
+  @media (max-width: 760px) {
+    .stage { grid-template-columns: 1fr; }
+  }
+  .phone-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .phone-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .phone-label span { color: var(--accent); }
+  .phone {
+    width: 100%;
+    max-width: 380px;
+    background: var(--bg);
+    border-radius: 32px;
+    padding: 16px 0 0;
+    position: relative;
+    overflow: hidden;
+    min-height: 720px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 6px 24px rgba(60,50,30,0.08);
+  }
+
+  /* Top bar */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px 14px;
+  }
+  .crumb {
+    font-size: 11px;
+    color: var(--whisper);
+    letter-spacing: 2px;
+  }
+  .close {
+    color: var(--muted);
+    font-size: 18px;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Edge labels */
+  .edge-label {
+    position: absolute;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--whisper);
+    pointer-events: none;
+  }
+  .edge-bottom { bottom: 14px; left: 50%; transform: translateX(-50%); }
+
+  /* Writing state */
+  .write-area {
+    padding: 22px 24px 0;
+  }
+  .date-line {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 14px;
+    letter-spacing: 0.3px;
+  }
+  .date-line span.dot {
+    color: var(--whisper);
+    margin: 0 6px;
+  }
+  .compose {
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--text);
+    min-height: 200px;
+    font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    letter-spacing: 0.1px;
+  }
+  .compose .placeholder {
+    color: var(--whisper);
+    font-style: italic;
+  }
+  .cursor {
+    display: inline-block;
+    width: 2px;
+    height: 19px;
+    background: var(--accent);
+    vertical-align: -3px;
+    margin-left: 1px;
+    animation: blink 1s steps(2, start) infinite;
+  }
+  @keyframes blink { to { visibility: hidden; } }
+
+  /* Bottom action bar */
+  .actions {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 14px 22px 22px;
+    background: linear-gradient(to top, var(--bg) 70%, rgba(240,234,214,0));
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .meta-text {
+    font-size: 11px;
+    color: var(--whisper);
+    letter-spacing: 0.5px;
+  }
+  .review-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+  }
+  .review-btn i { font-size: 13px; }
+  .review-btn.dim {
+    background: var(--bg-deep);
+    color: var(--whisper);
+  }
+
+  /* Review state */
+  .review-area {
+    padding: 22px 24px 0;
+  }
+  .review-heading {
+    font-size: 11px;
+    color: var(--whisper);
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .filing-card {
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 16px 16px 14px;
+    border: 0.5px solid var(--border);
+    margin-bottom: 14px;
+  }
+  .filing-type {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .type-glyph {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--accent-faint);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+  }
+  .type-name {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .type-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 1px;
+  }
+  .type-change {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+  }
+
+  .filing-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 0.5px solid var(--border);
+  }
+  .field {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 13px;
+  }
+  .field-label {
+    width: 70px;
+    flex-shrink: 0;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .field-value {
+    flex: 1;
+    color: var(--text);
+    line-height: 1.45;
+  }
+  .field-value .pill {
+    display: inline-block;
+    padding: 1px 8px;
+    background: var(--bg);
+    border: 0.5px solid var(--border);
+    border-radius: 999px;
+    font-size: 12px;
+    margin-right: 4px;
+    margin-bottom: 3px;
+  }
+  .prose-snippet {
+    font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    font-size: 13.5px;
+    color: var(--text-soft);
+    font-style: italic;
+    line-height: 1.5;
+  }
+
+  /* Side note: attached records */
+  .also-attached {
+    margin-top: 16px;
+    padding: 12px 14px;
+    background: var(--bg-deep);
+    border-radius: 10px;
+    border: 0.5px dashed var(--border);
+  }
+  .also-attached-title {
+    font-size: 10.5px;
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .also-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--text-soft);
+    padding: 4px 0;
+  }
+  .also-row i {
+    color: var(--accent);
+    font-size: 13px;
+  }
+
+  /* Review bottom actions */
+  .review-actions {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 14px 22px 22px;
+    background: linear-gradient(to top, var(--bg) 70%, rgba(240,234,214,0));
+    display: flex;
+    gap: 10px;
+  }
+  .secondary-btn {
+    flex: 1;
+    padding: 11px 14px;
+    background: transparent;
+    color: var(--muted);
+    border: 0.5px solid var(--border);
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .primary-btn {
+    flex: 1.4;
+    padding: 11px 14px;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .primary-btn i { font-size: 13px; }
+
+  /* Annotations */
+  .annot-row {
+    max-width: 880px;
+    margin: 28px auto 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+  }
+  @media (max-width: 760px) {
+    .annot-row { grid-template-columns: 1fr; }
+  }
+  .annot {
+    background: #FFFBF0;
+    border: 0.5px solid #D6CCAE;
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: #4A3F28;
+  }
+  .annot strong { color: var(--accent); font-weight: 500; }
+
+  @media (prefers-color-scheme: dark) {
+    body { background: #1a1610; }
+    .annot { background: #2a2418; border-color: #4a3d28; color: #c8b896; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+
+  <!-- LEFT: Writing state -->
+  <div class="phone-wrap">
+    <div class="phone-label">State 1 · <span>Writing</span></div>
+    <div class="phone">
+      <div class="topbar">
+        <div class="crumb">NEW ENTRY</div>
+        <i class="ti ti-x close" aria-label="Close"></i>
+      </div>
+
+      <div class="write-area">
+        <div class="date-line">
+          Friday, 15 May <span class="dot">·</span> 8:42 pm
+        </div>
+        <div class="compose">
+          Finally got to Raoul's tonight with Mandy. Steak frites was as good as everyone said — the bordelaise sauce is the whole thing. We split a bottle of Côtes du Rhône. Saw Conclave after, the cardinals movie everyone's been talking about. Fiennes is incredible.<span class="cursor"></span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <span class="meta-text">238 chars</span>
+        <button class="review-btn">
+          Review <i class="ti ti-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Review state -->
+  <div class="phone-wrap">
+    <div class="phone-label">State 2 · <span>Review</span></div>
+    <div class="phone">
+      <div class="topbar">
+        <div class="crumb">CONFIRM FILING</div>
+        <i class="ti ti-x close" aria-label="Close"></i>
+      </div>
+
+      <div class="review-area">
+        <div class="review-heading">Filing as</div>
+
+        <div class="filing-card">
+          <div class="filing-type">
+            <div class="type-glyph"><i class="ti ti-tools-kitchen-2"></i></div>
+            <div>
+              <div class="type-name">Restaurant visit</div>
+              <div class="type-sub">Friday, 15 May</div>
+            </div>
+            <span class="type-change">Change</span>
+          </div>
+
+          <div class="filing-fields">
+            <div class="field">
+              <span class="field-label">Place</span>
+              <span class="field-value"><span class="pill">Raoul's</span></span>
+            </div>
+            <div class="field">
+              <span class="field-label">With</span>
+              <span class="field-value"><span class="pill">Mandy</span></span>
+            </div>
+            <div class="field">
+              <span class="field-label">Had</span>
+              <span class="field-value">
+                <span class="pill">Steak frites</span>
+                <span class="pill">Côtes du Rhône</span>
+              </span>
+            </div>
+            <div class="field">
+              <span class="field-label">Note</span>
+              <span class="field-value prose-snippet">"Bordelaise sauce is the whole thing."</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="also-attached">
+          <div class="also-attached-title">Also filing</div>
+          <div class="also-row">
+            <i class="ti ti-player-play"></i>
+            <span>Media — <strong style="color:var(--text);font-weight:500;">Conclave</strong> (film) · watched</span>
+          </div>
+          <div class="also-row">
+            <i class="ti ti-book"></i>
+            <span>Day log — adds to today's entry</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="review-actions">
+        <button class="secondary-btn">Edit</button>
+        <button class="primary-btn">
+          File <i class="ti ti-check"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="annot-row">
+  <div class="annot">
+    <strong>Writing state.</strong> Crumb says "NEW ENTRY" — you're at the unified +. Date and time inline at top, no other chrome. Compose area is serif (Georgia) — feels like writing on paper rather than entering data. No type chooser, no field labels — just prose. Bottom bar shows a quiet character count and a single Review button. Tap it when you're done; that's when Claude parses.
+  </div>
+  <div class="annot">
+    <strong>Review state.</strong> Crumb says "CONFIRM FILING." The primary filing is shown as a card — Claude picked <em>Restaurant visit</em> as the dominant type and extracted Place, With, Had, and pulled a sentence as the Note. "Change" link lets you override the type. Below, the dashed "Also filing" box shows attached secondary records — the film mentioned becomes a Media entry, and the whole prose becomes part of today's day log. Edit returns to the compose surface. File saves all three records.
+  </div>
+</div>
+
+</body>
+</html>
