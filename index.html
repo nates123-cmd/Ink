@@ -238,7 +238,9 @@
     .stoic-type-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
     .stoic-prompt-item { background: var(--card-bg); border: .5px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
     .stoic-prompt-q { font-family: var(--serif); font-size: 14.5px; color: var(--text); line-height: 1.5; }
-    .stoic-prompt-dots { font-size: 11px; color: var(--whisper); margin-top: 6px; letter-spacing: 2px; }
+    .stoic-prompt-dots { font-size: 11px; color: var(--whisper); margin-top: 8px; letter-spacing: 2px; }
+    .stoic-a { width: 100%; margin-top: 10px; min-height: 60px; padding: 10px 12px; border: .5px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); font-family: var(--serif); font-size: 14px; line-height: 1.55; outline: none; resize: vertical; }
+    .stoic-a:focus { border-color: var(--accent-soft); }
     .list-empty { color: var(--muted); text-align: center; padding: 40px 0; font-size: 14px; font-style: italic; font-family: var(--serif); }
     .spinner { width: 22px; height: 22px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin: 40px auto; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -317,7 +319,10 @@
   <div class="screen" id="screen-compose">
     <div class="topbar">
       <div class="crumb">New Entry</div>
-      <button class="icon-btn" id="compose-close" aria-label="Close"><i class="ti ti-x"></i></button>
+      <div style="display:flex;gap:4px">
+        <button class="icon-btn" id="compose-home" aria-label="Home"><i class="ti ti-home"></i></button>
+        <button class="icon-btn" id="compose-close" aria-label="Close"><i class="ti ti-x"></i></button>
+      </div>
     </div>
     <div class="compose-area">
       <div class="date-line" id="compose-date">—</div>
@@ -333,7 +338,10 @@
   <div class="screen" id="screen-compose-review">
     <div class="topbar">
       <div class="crumb">Confirm Filing</div>
-      <button class="icon-btn" id="review-close" aria-label="Back"><i class="ti ti-x"></i></button>
+      <div style="display:flex;gap:4px">
+        <button class="icon-btn" id="review-home" aria-label="Home"><i class="ti ti-home"></i></button>
+        <button class="icon-btn" id="review-close" aria-label="Back"><i class="ti ti-x"></i></button>
+      </div>
     </div>
     <div class="review-area">
       <div class="review-heading">Filing as</div>
@@ -365,8 +373,7 @@
     <div class="pad">
       <div class="stoic-type-row" id="stoic-type-row"></div>
       <div id="stoic-prompts"></div>
-      <textarea class="input" id="stoic-answer" placeholder="Write your response…" style="margin-top:8px"></textarea>
-      <button class="btn btn-primary" id="stoic-save" style="margin-top:14px;width:100%">Save reflection</button>
+      <button class="btn btn-primary" id="stoic-save" style="margin-top:6px;width:100%">Save reflection</button>
     </div>
   </div>
 
@@ -413,6 +420,14 @@
         <input class="input" id="oura-input" type="password" placeholder="Personal access token" />
       </div>
       <button class="btn btn-primary" id="apikey-save" style="width:100%">Save</button>
+      <div class="field-block" style="margin-top:24px;border-top:.5px solid var(--hairline);padding-top:18px">
+        <label>Export / share file</label>
+        <p class="meta-text" style="margin-bottom:10px">Download every record — days, restaurants, media, thoughts, reflections.</p>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" id="export-json" style="flex:1"><i class="ti ti-file-code"></i> JSON</button>
+          <button class="btn btn-secondary" id="export-md" style="flex:1"><i class="ti ti-file-text"></i> Markdown</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -580,6 +595,7 @@
       const fromSide=viaSwipeDir?BACK_SWIPE_FROM[viaSwipeDir]:'right';
       slideTo(prev||'home', fromSide);
     }
+    function goHome(){ navStack=[]; slideTo('home','right'); }
     function onEnter(id){
       if(id==='home'){ renderHome(); refreshContentSlot(); maybeHideLpHint(); }
       if(id==='today'){ renderTodayHead(); loadHabits(); loadTodayLog(); loadOpenDays(); }
@@ -600,6 +616,8 @@
     document.getElementById('reflect-back').addEventListener('click', ()=> goBack());
     document.getElementById('apikey-back').addEventListener('click', ()=> goBack());
     document.getElementById('compose-close').addEventListener('click', ()=> goBack());
+    document.getElementById('compose-home').addEventListener('click', goHome);
+    document.getElementById('review-home').addEventListener('click', goHome);
     document.getElementById('review-close').addEventListener('click', ()=> slideTo('compose'));
     document.getElementById('review-edit').addEventListener('click', ()=> slideTo('compose'));
 
@@ -1036,15 +1054,20 @@
       document.querySelectorAll('.stoic-type-btn').forEach(b=> b.addEventListener('click', ()=>{ stoicType=b.dataset.st; initStoic(); }));
       stoicPrompts=STOIC_PRACTICES[stoicType].prompts.slice();
       renderStoicPrompts();
-      document.getElementById('stoic-answer').value='';
     }
     function renderStoicPrompts(){
+      // B2: a response textarea under every prompt (not one shared box).
       document.getElementById('stoic-prompts').innerHTML=stoicPrompts.map((q,i)=>
-        '<div class="stoic-prompt-item" data-idx="'+i+'"><div class="stoic-prompt-q">'+esc(q)+'</div><div class="stoic-prompt-dots">••• hold to regenerate</div></div>').join('');
-      document.querySelectorAll('.stoic-prompt-item').forEach(item=>{
-        let tmr=null;
-        item.addEventListener('pointerdown', ()=>{ tmr=setTimeout(()=> regenStoicPrompt(+item.dataset.idx), 500); });
-        ['pointerup','pointerleave','pointercancel','pointermove'].forEach(ev=> item.addEventListener(ev, ()=> clearTimeout(tmr)));
+        '<div class="stoic-prompt-item" data-idx="'+i+'">'+
+          '<div class="stoic-prompt-q">'+esc(q)+'</div>'+
+          '<textarea class="stoic-a" data-ai="'+i+'" placeholder="Your response…"></textarea>'+
+          '<div class="stoic-prompt-dots">••• hold the prompt to regenerate</div></div>').join('');
+      // Long-press only on the question text — not the whole card — so typing
+      // in the answer box can't trip a regenerate.
+      document.querySelectorAll('#stoic-prompts .stoic-prompt-q').forEach(qel=>{
+        const idx=+qel.closest('.stoic-prompt-item').dataset.idx; let tmr=null;
+        qel.addEventListener('pointerdown', ()=>{ tmr=setTimeout(()=> regenStoicPrompt(idx), 500); });
+        ['pointerup','pointerleave','pointercancel','pointermove'].forEach(ev=> qel.addEventListener(ev, ()=> clearTimeout(tmr)));
       });
     }
     async function regenStoicPrompt(idx){
@@ -1057,16 +1080,20 @@
         stoicPrompts[idx]=r.prompt; q.textContent=r.prompt;
       }catch(e){ q.textContent=original; showToast('Regenerate failed — '+e.message); } // F3: real error
     }
-    document.getElementById('stoic-save').addEventListener('click', async ()=>{
-      const ans=document.getElementById('stoic-answer').value.trim(); if(!ans) return showToast('Nothing to save');
+    async function saveStoic(){
+      const ans=Array.from(document.querySelectorAll('#stoic-prompts .stoic-a')).map(t=> t.value.trim());
+      const pairs=stoicPrompts.map((q,i)=> ({q, a:ans[i]||''})).filter(p=> p.a);
+      if(!pairs.length) return showToast('Nothing to save');
       const label=STOIC_PRACTICES[stoicType].label;
-      const body=stoicPrompts.map((q,i)=> 'Q: '+q+'\nA: '+(i===0?ans:'')).join('\n\n');
+      const body=pairs.map(p=> 'Q: '+p.q+'\nA: '+p.a).join('\n\n');
+      const raw=pairs.map(p=> p.a).join('\n\n');
       try{
-        const ent=await sbFetch('entries',{method:'POST',prefer:'return=representation',body:JSON.stringify({raw_text:ans, primary_type:'reflection', source_surface:'stoic_screen'})});
+        const ent=await sbFetch('entries',{method:'POST',prefer:'return=representation',body:JSON.stringify({raw_text:raw, primary_type:'reflection', source_surface:'stoic_screen'})});
         await sbFetch('reflections',{method:'POST',body:JSON.stringify({source_entry_id:ent?.[0]?.id||null, text:body, tags:['stoic'], prompt_used:label, date:today()})});
         showToast('Saved'); goBack();
       }catch(e){ showToast('Save failed — '+e.message); }
-    });
+    }
+    document.getElementById('stoic-save').addEventListener('click', saveStoic);
 
     // ════ THOUGHTS ════
     document.getElementById('thoughts-save').addEventListener('click', async ()=>{
@@ -1101,6 +1128,45 @@
       const o=document.getElementById('oura-input').value.trim(); if(o) localStorage.setItem('still_oura_pat', o);
       showToast('Saved'); goBack();
     });
+
+    // B4: export / share file — all records as JSON or Markdown, client-side download.
+    function downloadFile(name, text, type){
+      const u=URL.createObjectURL(new Blob([text],{type}));
+      const a=document.createElement('a'); a.href=u; a.download=name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=> URL.revokeObjectURL(u), 1500);
+    }
+    async function exportData(fmt){
+      showToast('Building export…');
+      try{
+        const [entries,days,rests,media,thoughts,refl]=await Promise.all([
+          sbFetch('entries?order=composed_at.asc&limit=5000'),
+          sbFetch('day_logs?order=date.asc&limit=5000'),
+          sbFetch('restaurant_visits?order=visit_date.asc&limit=5000'),
+          sbFetch('media_entries?order=consumed_date.asc&limit=5000'),
+          sbFetch('thoughts?order=thought_date.asc&limit=5000'),
+          sbFetch('reflections?order=created_at.asc&limit=5000'),
+        ]);
+        const stamp=new Date().toISOString().slice(0,10);
+        if(fmt==='json'){
+          downloadFile('ink-export-'+stamp+'.json', JSON.stringify({ app:'Ink', exported_at:new Date().toISOString(),
+            tables:{ entries, day_logs:days, restaurant_visits:rests, media_entries:media, thoughts, reflections:refl } }, null, 2), 'application/json');
+        } else {
+          let md='# Ink export — '+stamp+'\n';
+          md+='\n## Day logs\n'+(days||[]).map(r=> '- **'+r.date+'** — '+(r.text||'')).join('\n');
+          md+='\n\n## Restaurants\n'+(rests||[]).map(r=> '- **'+r.place_name+'** ('+(r.visit_date||'')+')'+
+            ((r.with_people||[]).length?' · with '+r.with_people.join(', '):'')+((r.dishes||[]).length?' · '+r.dishes.join(', '):'')+(r.note?' — _'+r.note+'_':'')).join('\n');
+          md+='\n\n## Media\n'+(media||[]).map(r=> '- **'+r.title+'** ('+(r.format||'')+(r.consumed_date?', '+r.consumed_date:'')+')'+
+            (r.rating?' '+'★'.repeat(r.rating):'')+(r.note?' — _'+r.note+'_':'')).join('\n');
+          md+='\n\n## Thoughts\n'+(thoughts||[]).map(r=> '- ('+(r.thought_date||'')+') '+(r.text||'').replace(/\n/g,' ')).join('\n');
+          md+='\n\n## Reflections\n'+(refl||[]).map(r=> '- ('+(r.date||(r.created_at||'').slice(0,10))+(r.prompt_used?' · '+r.prompt_used:'')+') '+(r.text||'').replace(/\n/g,' ')).join('\n');
+          downloadFile('ink-export-'+stamp+'.md', md, 'text/markdown');
+        }
+        showToast('Export ready');
+      }catch(e){ showToast('Export failed — '+e.message); }
+    }
+    document.getElementById('export-json').addEventListener('click', ()=> exportData('json'));
+    document.getElementById('export-md').addEventListener('click', ()=> exportData('md'));
 
     // ════ Habits manage ════
     async function loadHabitsManage(){
@@ -1140,6 +1206,20 @@
           '<div class="stoic-prompt-dots">started '+esc(x.start_date)+(x.completed?' · done':'')+'</div></div>').join('') : '<p class="list-empty">No active challenges. Full library ports in v1 task #7.</p>';
       }catch(e){ el.innerHTML='<p class="stub-note">'+esc(e.message)+'</p>'; }
     }
+
+    // ── B1: ⌘/Ctrl+Enter submits the active entry surface ──
+    function submitActive(){
+      const ov=document.getElementById('modal-overlay');
+      if(ov.classList.contains('show')){ const b=document.getElementById('bf-save'); if(b) b.click(); return; }
+      const c=cur();
+      if(c==='today'){ const t=document.getElementById('log-text').value.trim(); if(t){ saveTodayLog(); showToast('Saved'); } return; }
+      if(c==='stoic'){ saveStoic(); return; }
+      const map={ compose:'compose-review', 'compose-review':'review-file', thoughts:'thoughts-save', reflect:'reflect-save', apikey:'apikey-save' };
+      const id=map[c]; if(id){ const btn=document.getElementById(id); if(btn && !btn.disabled) btn.click(); }
+    }
+    document.addEventListener('keydown', e=>{
+      if((e.metaKey||e.ctrlKey) && (e.key==='Enter'||e.keyCode===13)){ e.preventDefault(); submitActive(); }
+    });
 
     // ── Boot ──
     renderHome();

@@ -546,6 +546,34 @@ Four defects observed in live Still use. Decision: **do not patch deprecated Sti
 
 ---
 
+## Captured fixes & ideas (2026-05-18)
+
+Second batch from live use. Bugs B1–B4 are v1 requirements; Idea I1 is Roadmap-only.
+
+### B1 — Cmd/Ctrl+Enter submits the active entry surface
+
+Desktop has no fast submit; tapping the button is the only path. Requirement: `⌘`/`Ctrl`+`Enter` triggers the primary commit on whatever entry surface is focused — compose write → Review, compose-review → File, Today day-log → save, Thoughts → save, Reflect → save, Stoic → save, and the day backfill sheet → Save day. One global keydown handler keyed off the active screen / open modal. Plain Enter still inserts newlines (these are prose fields).
+
+### B2 — Respond to each prompt individually (Stoic)
+
+The Stoic screen shows three prompts but only one shared answer box, and save persists only prompt #1's text (`A:` blank for the rest) — a scaffold shortcut, now a defect. Requirement: render a response textarea under **each** prompt. Saved `reflections.text` is the Q/A pairs for **answered** prompts only (skip blanks); still one `entries` row (`source_surface='stoic_screen'`), `prompt_used` = practice label, `tags:['stoic']`. Reflect (single prompt) is unaffected.
+
+### B3 — Home control on the compose screens
+
+Compose and compose-review only offer `×` (step-back). From a multi-step filing flow the user wants a direct exit to home. Requirement: add a home affordance to both top bars alongside `×`; it clears `navStack` and returns to `home` (no accidental-dismissal concern since it's an explicit, labeled control distinct from the canvas). `×` keeps its current step-back/return-to-compose behavior.
+
+### B4 — Mass-add restaurants & media + a share file
+
+Two parts:
+- **Mass add:** extend the agent-run "Bulk historical import" procedure to `restaurant_visits` and `media_entries` (user pastes lists; dry-run → confirm → idempotent; each row gets a linked `entries` row, `source_surface='unified_plus'`, `primary_type='restaurant'|'media'`). Idempotency key: restaurant = (place_name, visit_date) where dated else place_name; media = (title, format).
+- **Share file:** Settings → **Export** downloads a single file of all records (`entries`, `day_logs`, `restaurant_visits`, `media_entries`, `thoughts`, `reflections`) — JSON for re-import/backup plus a readable Markdown rendering. Client-side `Blob` download, no server. The agent can also produce this file on request.
+
+### I1 — Idea: send a Thought to a project (Roadmap, speculative)
+
+A Thought in Ink could be promoted into a project. Course owns projects/operational edits (see [[feedback-course-owns-everything]]); the transfer would push a Thought into Course's project intake (its Supabase or the Notion Projects DB), tagged as originating from Ink, leaving the Thought in place with a "sent" marker. Depends on a stable Course intake contract — **not v1**. Logged under Roadmap v3 (cross-app), not implemented now.
+
+---
+
 ## Patch suite integration
 
 Patch's app pills currently include Still. After this redesign, the pill renames to `Ink` and the legacy fixes inbox carries over. No data migration needed for Patch — it doesn't read from the apps it tracks.
@@ -582,6 +610,7 @@ Patch's app pills currently include Still. After this redesign, the pill renames
 **v3 (speculative):**
 - Cross-app entity drilling. Tap "Raoul's" in Ink → see Tide's drinks data for that date, see Course's tasks completed that week, see Tick's focus sessions that day.
 - Photo attachment per entry (Supabase Storage).
+- Send a Thought → Course project intake (Idea I1, 2026-05-18). Depends on a stable Course intake contract.
 
 ---
 
