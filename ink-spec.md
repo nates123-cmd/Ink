@@ -27,7 +27,82 @@ The fourth app in the personal OS suite alongside Tick, Break, Tide, Course, Pat
 
 ---
 
+## Navigation & Mind redesign — LOCKED 2026-05-18
+
+**Authoritative.** Supersedes, below: §Architecture overview, §Home screen (gestures/edge labels/slot targets), §Today screen (removed), §Compose screen (removed), §Journal screen (now also the day surface), §Stoic / Thoughts / Reflect (Thoughts & Reflect folded), §Routing and navigation. Older sections kept for history under a supersede banner. Not yet implemented — this step is spec-lock only.
+
+### Gesture model (home)
+
+| Gesture | Surface | Enters |
+|---|---|---|
+| Swipe **up** | **Capture** — one full-bleed freeform textarea → a `thoughts` row. No prompt, no parsing, no review. | from bottom |
+| Swipe **down** | **Journal** — the day surface **and** the read timeline (see below). | from top |
+| Swipe **left** | **Stoic** — unchanged. The only surface that writes `reflections`; feeds the home morning-intention loop. | from right |
+| Swipe **right** | **Mind** — 3-tab thought lifecycle (Thoughts / Insights / Mantras). | from left |
+| **Long-press** canvas | **Options menu** bottom sheet: Settings, Challenges, Habits manage, Prompt Library, Pattern. (No longer opens Journal.) | sheet |
+| ~~`+` button~~ | **Removed** — no unified compose, no Claude parse-and-file. | — |
+
+Edge labels: `▲ CAPTURE` / `JOURNAL ▼` / `◀ STOIC` / `MIND ▶`. Long-press hint copy → "LONG PRESS · MENU". Content-slot priority unchanged (morning intention → mantra → quote); mantra source remains the shared `mantras` table, now fed by Mind's "flag as mantra". Tapping the morning-intention slot routes to Stoic (the reflection surface) rather than the old Reflect.
+
+### Removed
+
+- **Today screen** — deleted; its three jobs move into Journal.
+- **Compose / compose-review**, the unified `+`, filing card, type chooser, multi-record write model, append-vs-separate override — all removed. `restaurant_visits` / `media_entries` now originate only from (a) the Journal day-log's live extraction and (b) agent-run bulk import.
+- **Reflect screen** — folded. Free-form reflection no longer exists outside Stoic; `reflections` is written **only** by the Stoic screen.
+- **Thoughts screen (old)** — replaced by Capture (write) + Mind (manage).
+
+### Capture (swipe up)
+
+Full-screen serif textarea, placeholder *"What's on your mind?"*, date/time line, Home + `×` controls, ⌘/Ctrl+Enter to save. Save → one `entries` row (`primary_type='thought'`, `source_surface='thoughts_screen'`) + one `thoughts` row (`status='active'`); return home.
+
+### Journal (swipe down) — day surface + timeline
+
+Top→bottom: (1) habit pill strip (toggles `habit_logs`); (2) today's day-log editor card with live entity-extraction tags + the "Open · not yet logged" backfill list; (3) filter chips `All / Days / Restaurants / Media / Thoughts / Reflections`; (4) the unified timeline. Everything the old Today screen did lives at the top of Journal; the rest is the existing read timeline.
+
+### Mind (swipe right) — thought lifecycle
+
+Tabs **Thoughts · Insights · Mantras**. Each lists `status='active'` rows newest-first; a Dismissed toggle reveals `status='dismissed'`.
+
+- **Thoughts** row: → Insight · → Mantra · Push to Course · Dismiss · Delete (Resurface if dismissed)
+- **Insights** row: → Mantra · Push to Course · Dismiss · Delete
+- **Mantras** row: Push to Course · Dismiss · Delete
+
+**Move = move, not copy.** Promote = insert into the target table carrying `text` + `source_entry_id`, then delete the source row — a promoted thought leaves Thoughts and appears under Insights, etc. The shared `mantras` (feeds home + Break) and Still's `insights` stay the system of record so existing integrations keep working. Promote opens a one-field confirm allowing a light text edit before the move. **Dismiss** → `status='dismissed'` (reversible). **Resurface** → `status='active'`. **Delete** → row removed (single confirm).
+
+### Push to Course (v1 — via Course's inbox)
+
+Course's inbox is the **`course_captures`** table on the **same shared Supabase project** (`xsmnfcmtbpeaccnyinkr`): `raw_text` (not null), `suggested_project_id?`, `suggested_task_title?`, `work_area?`, `status` `'pending'|'processed'|'dismissed'` (default `'pending'`), `created_at`, `processed_at`. Course's own Inbox triage classifies pending items — there is no direct task/project create endpoint.
+
+Ink's "Push to Course" (every Mind row, any stage): a small **Task / Project / Note** chooser, then `INSERT course_captures { raw_text, status:'pending' }` where `raw_text` carries a type hint (prefix `[task] ` / `[project] ` / `[note] `), and for **Task** also set `suggested_task_title` to the item text. Set the Ink-side row's `pushed_to_course = true` for a badge; the row does not move. Plain insert into an existing table — no Course-side work.
+
+### Additive schema migration — NOT YET APPLIED (run when build is greenlit)
+
+```sql
+alter table thoughts add column if not exists status text not null default 'active'
+  check (status in ('active','dismissed'));
+alter table thoughts add column if not exists pushed_to_course boolean not null default false;
+alter table insights add column if not exists source_entry_id uuid references entries(id) on delete set null;
+alter table insights add column if not exists status text not null default 'active'
+  check (status in ('active','dismissed'));
+alter table insights add column if not exists pushed_to_course boolean not null default false;
+alter table mantras  add column if not exists status text not null default 'active'
+  check (status in ('active','dismissed'));
+alter table mantras  add column if not exists pushed_to_course boolean not null default false;
+create index if not exists idx_thoughts_status on thoughts(status, created_at desc);
+create index if not exists idx_insights_status on insights(status, created_at desc);
+```
+
+Additive/idempotent; no DROP, no data mutation. `mantras` is shared with Break — the new nullable columns are inert to Break (it selects `text`).
+
+### Build order (when greenlit — not this step)
+
+1. Apply migration. 2. Rebuild home gesture map + edge labels + long-press menu; delete Today/Compose/Reflect screens. 3. Journal absorbs habit strip + day-log + open-days. 4. Capture screen. 5. Mind 3-tab surface + promote/dismiss/resurface/delete. 6. Push-to-Course. 7. `sw.js` `ink-v2→ink-v3`, syntax check, commit, deploy.
+
+---
+
 ## Architecture overview
+
+> ⚠️ **SUPERSEDED by "Navigation & Mind redesign — LOCKED 2026-05-18"** (above). Kept for history — do not implement from here.
 
 ### Two write doors, one read surface
 
@@ -227,6 +302,8 @@ create index idx_entries_composed on entries(composed_at desc);
 
 ## Home screen
 
+> ⚠️ **Gestures/edge-labels/slot-targets SUPERSEDED by "Navigation & Mind redesign — LOCKED 2026-05-18".** Canvas layout (date centerpiece, content slot) still applies; the gesture map and `+` do not.
+
 **Layout:** centered canvas, edge-labeled gesture nav, no scroll.
 
 **Top bar:**
@@ -269,6 +346,8 @@ All in 10px whisper letterspaced (3.5px). Triangles in `--accent-soft`.
 ---
 
 ## Today screen (habits + day log)
+
+> ⚠️ **REMOVED — SUPERSEDED by "Navigation & Mind redesign — LOCKED 2026-05-18".** This screen no longer exists; its habit strip + day-log + open-days backfill move to the top of Journal. Behaviors below still describe how those pieces work — just inside Journal now.
 
 **Top bar:** crumb "TODAY · DAY LOG" in 11px whisper letterspaced top-left. Right side has a `ti-dots` overflow icon for habit management.
 
@@ -320,6 +399,8 @@ Habits managed via overflow menu → `habits-manage` screen (carryover from Stil
 ---
 
 ## Compose screen (unified `+`)
+
+> ⚠️ **REMOVED — SUPERSEDED by "Navigation & Mind redesign — LOCKED 2026-05-18".** The `+`, the write→Review→File flow, the filing card, the type chooser, and the multi-record write model are all dropped. Do not implement.
 
 **Two states:**
 
@@ -381,6 +462,8 @@ Opens a small overlay sheet (50% screen, slides up from bottom) with:
 
 ## Journal screen (read surface)
 
+> ⚠️ **PARTIALLY SUPERSEDED by "Navigation & Mind redesign — LOCKED 2026-05-18".** Reached by **swipe down** (not long-press), and it now carries the habit strip + day-log editor + open-days backfill above the timeline. The filter chips + per-type row layouts below still apply.
+
 **Reached by:** long-press on home canvas.
 
 **Top bar:** back arrow left, "Journal" title in serif Georgia 17px center, search icon right.
@@ -439,6 +522,8 @@ Right body (flex-1, layouts diverge):
 
 ## Stoic / Thoughts / Reflect screens (carryover, re-skinned)
 
+> ⚠️ **PARTIALLY SUPERSEDED by "Navigation & Mind redesign — LOCKED 2026-05-18".** Only **Stoic** survives as a screen (swipe left) and remains the sole writer of `reflections`. **Thoughts** is replaced by Capture (write) + Mind (manage). **Reflect** is folded — no free-form reflection outside Stoic.
+
 These carry over from Still functionally — only the palette and microcopy update.
 
 **Stoic screen:** 3 practice types (`evening`, `morning`, `premeditatio`), 3 prompt slots each, pinned prompts from `saved_prompts` fill first. Box breathing ritual unchanged. Save as reflection with `tags: ['stoic']` and `prompt_used` = practice label. Now also writes a row to `entries` with `primary_type='reflection'`, `source_surface='stoic_screen'`.
@@ -467,6 +552,8 @@ Existing Still `pattern` screen reads from `reflections`. Expand to read from al
 ---
 
 ## Routing and navigation
+
+> ⚠️ **Gesture/back map SUPERSEDED by "Navigation & Mind redesign — LOCKED 2026-05-18".** The `navigate/goBack/navStack` mechanics still hold; the specific gesture→screen and back-direction tables do not (Today/Compose/Reflect removed; Mind/Capture added).
 
 `navigate(id)` pushes to `navStack`, calls `onEnter(id)`. `goBack(viaSwipeDir?)` pops. `[data-nav]` attributes wired automatically.
 
@@ -568,9 +655,9 @@ Two parts:
 - **Mass add:** extend the agent-run "Bulk historical import" procedure to `restaurant_visits` and `media_entries` (user pastes lists; dry-run → confirm → idempotent; each row gets a linked `entries` row, `source_surface='unified_plus'`, `primary_type='restaurant'|'media'`). Idempotency key: restaurant = (place_name, visit_date) where dated else place_name; media = (title, format).
 - **Share file:** Settings → **Export** downloads a single file of all records (`entries`, `day_logs`, `restaurant_visits`, `media_entries`, `thoughts`, `reflections`) — JSON for re-import/backup plus a readable Markdown rendering. Client-side `Blob` download, no server. The agent can also produce this file on request.
 
-### I1 — Idea: send a Thought to a project (Roadmap, speculative)
+### I1 — Send a Thought to Course → PROMOTED TO v1 (2026-05-18)
 
-A Thought in Ink could be promoted into a project. Course owns projects/operational edits (see [[feedback-course-owns-everything]]); the transfer would push a Thought into Course's project intake (its Supabase or the Notion Projects DB), tagged as originating from Ink, leaving the Thought in place with a "sent" marker. Depends on a stable Course intake contract — **not v1**. Logged under Roadmap v3 (cross-app), not implemented now.
+No longer speculative. Resolved into the **Push to Course** action in §"Navigation & Mind redesign — LOCKED 2026-05-18": every Mind row (Thought/Insight/Mantra) can push to Course's existing **`course_captures`** inbox (same shared Supabase project) with a Task/Project/Note hint. Plain insert, no Course-side work, no Notion dependency. See that section for the contract.
 
 ---
 
@@ -610,7 +697,7 @@ Patch's app pills currently include Still. After this redesign, the pill renames
 **v3 (speculative):**
 - Cross-app entity drilling. Tap "Raoul's" in Ink → see Tide's drinks data for that date, see Course's tasks completed that week, see Tick's focus sessions that day.
 - Photo attachment per entry (Supabase Storage).
-- Send a Thought → Course project intake (Idea I1, 2026-05-18). Depends on a stable Course intake contract.
+- ~~Send a Thought → Course project intake (Idea I1)~~ — **promoted to v1**, see §"Navigation & Mind redesign — LOCKED 2026-05-18".
 
 ---
 
