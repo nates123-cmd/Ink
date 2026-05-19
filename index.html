@@ -91,8 +91,6 @@
     .wordmark { font-family: var(--serif); font-size: 19px; color: var(--text); font-weight: 500; letter-spacing: .5px; }
     .wordmark .dot { color: var(--accent); }
     .icon-btn { color: var(--muted); font-size: 18px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: none; border: none; }
-    .plus-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); color: var(--bg); display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; }
-    .plus-btn i { font-size: 18px; }
     .screen-title { font-family: var(--serif); font-size: 17px; font-weight: 500; color: var(--text); }
 
     /* ── Home ── */
@@ -134,7 +132,7 @@
     .chip i { font-size: 12px; }
 
     /* ── Timeline (journal) ── */
-    .timeline { flex: 1; overflow-y: auto; padding: 0 22px 24px; }
+    .timeline { padding: 0 22px 24px; }
     .month-divider { display: flex; align-items: center; gap: 10px; padding: 10px 0 8px; position: sticky; top: 0; background: var(--bg); z-index: 2; }
     .month-divider .label { font-size: 10px; letter-spacing: 3px; color: var(--whisper); text-transform: uppercase; }
     .month-divider .line { flex: 1; height: .5px; background: var(--border); }
@@ -158,7 +156,7 @@
     .entry-rating { margin-top: 4px; font-size: 12px; color: var(--accent); letter-spacing: 1px; }
     .entry-thought { font-family: var(--serif); font-size: 13.5px; line-height: 1.55; color: var(--text-soft); font-style: italic; }
 
-    /* ── Compose ── */
+    /* ── Compose / Capture ── */
     .compose-area { padding: 22px 24px 110px; flex: 1; }
     .date-line { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
     .date-line .dot { color: var(--whisper); margin: 0 6px; }
@@ -172,27 +170,7 @@
     .btn-secondary { background: transparent; color: var(--muted); border: .5px solid var(--border); }
     .btn i { font-size: 13px; }
 
-    .review-area { padding: 22px 24px 110px; flex: 1; overflow-y: auto; }
-    .review-heading { font-size: 11px; color: var(--whisper); letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 14px; }
-    .filing-card { background: var(--card-bg); border-radius: 14px; padding: 16px 16px 14px; border: .5px solid var(--border); margin-bottom: 14px; }
-    .filing-type { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-    .type-glyph { width: 32px; height: 32px; border-radius: 8px; background: var(--accent-faint); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 17px; }
-    .type-name { font-size: 15px; font-weight: 500; color: var(--text); }
-    .type-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
-    .type-change { margin-left: auto; font-size: 11px; color: var(--accent); letter-spacing: .5px; cursor: pointer; }
-    .filing-fields { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: .5px solid var(--border); }
-    .field { display: flex; align-items: baseline; gap: 10px; font-size: 13px; }
-    .field-label { width: 70px; flex-shrink: 0; color: var(--muted); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
-    .field-value { flex: 1; color: var(--text); line-height: 1.45; }
-    .pill { display: inline-block; padding: 1px 8px; background: var(--bg); border: .5px solid var(--border); border-radius: 999px; font-size: 12px; margin: 0 4px 3px 0; }
-    .prose-snippet { font-family: var(--serif); font-size: 13.5px; color: var(--text-soft); font-style: italic; line-height: 1.5; }
-    .also-attached { margin-top: 16px; padding: 12px 14px; background: var(--bg-deep); border-radius: 10px; border: .5px dashed var(--border); }
-    .also-title { font-size: 10.5px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
-    .also-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-soft); padding: 4px 0; }
-    .also-row i { color: var(--accent); font-size: 13px; }
-    .also-row strong { color: var(--text); font-weight: 500; }
-
-    /* ── Today ── */
+    /* ── Day surface (top of Journal) ── */
     .habit-strip { display: flex; gap: 8px; padding: 6px 20px 18px; overflow-x: auto; scrollbar-width: none; flex-shrink: 0; }
     .habit-strip::-webkit-scrollbar { display: none; }
     .hpill { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px 7px 10px; border-radius: 999px; border: .5px solid var(--border); background: var(--bg); font-size: 12.5px; color: var(--muted); white-space: nowrap; flex-shrink: 0; cursor: pointer; }
@@ -202,11 +180,11 @@
     .hpill.done .ring i { font-size: 9px; }
     .hpill .streak { font-size: 10px; color: var(--whisper); font-variant-numeric: tabular-nums; }
     .log-wrap { padding: 0 22px 24px; }
-    .log-card { background: var(--card-bg); border-radius: 18px; padding: 20px 18px 16px; border: .5px solid var(--border); min-height: 280px; }
+    .log-card { background: var(--card-bg); border-radius: 18px; padding: 20px 18px 16px; border: .5px solid var(--border); min-height: 220px; }
     .date-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
     .date-prefix { font-family: var(--serif); font-size: 22px; font-weight: 500; color: var(--accent); }
     .date-meta { font-size: 12px; color: var(--whisper); text-transform: lowercase; letter-spacing: .5px; }
-    textarea.log-text { width: 100%; border: none; outline: none; resize: none; background: transparent; font-family: var(--serif); font-size: 16px; line-height: 1.6; color: var(--text); min-height: 130px; }
+    textarea.log-text { width: 100%; border: none; outline: none; resize: none; background: transparent; font-family: var(--serif); font-size: 16px; line-height: 1.6; color: var(--text); min-height: 110px; }
     textarea.log-text::placeholder { color: var(--whisper); font-style: italic; }
     .tags { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 16px; padding-top: 14px; border-top: .5px solid var(--border); font-size: 12px; color: var(--muted); }
     .tags:empty { display: none; }
@@ -225,6 +203,24 @@
     .od-dots { flex: 1; border-bottom: 1px dotted var(--border); height: 0; }
     .od-add { font-size: 11px; color: var(--accent); letter-spacing: 1px; text-transform: uppercase; }
     .od-caught { font-family: var(--serif); font-style: italic; color: var(--muted); font-size: 13px; padding: 8px 0; }
+    .journal-sep { height: .5px; background: var(--border); margin: 0 22px 4px; }
+
+    /* ── Mind (thought lifecycle) ── */
+    .mind-tabs { display: flex; gap: 6px; padding: 0 22px 12px; flex-shrink: 0; }
+    .mind-tab { flex: 1; padding: 9px 8px; border-radius: 10px; border: .5px solid var(--border); background: transparent; color: var(--muted); font-size: 13px; cursor: pointer; }
+    .mind-tab.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+    .mind-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 0 22px 10px; font-size: 10.5px; color: var(--whisper); letter-spacing: 1.5px; text-transform: uppercase; flex-shrink: 0; }
+    .mind-toggle { cursor: pointer; color: var(--accent-soft); }
+    .mind-list { flex: 1; overflow-y: auto; padding: 0 22px 24px; }
+    .mind-item { padding: 14px 0; border-bottom: .5px solid var(--hairline); }
+    .mind-item:last-child { border-bottom: none; }
+    .mind-text { font-family: var(--serif); font-size: 15px; line-height: 1.55; color: var(--text); white-space: pre-wrap; }
+    .mind-item.dismissed .mind-text { color: var(--muted); font-style: italic; }
+    .mind-meta { font-size: 10px; color: var(--whisper); letter-spacing: 1px; text-transform: uppercase; margin-top: 6px; }
+    .mind-meta .badge { color: var(--accent); }
+    .mind-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .mind-act { font-size: 12px; padding: 5px 11px; border-radius: 999px; border: .5px solid var(--border); background: transparent; color: var(--accent); cursor: pointer; }
+    .mind-act.danger { color: var(--muted); }
 
     /* ── Generic content / forms ── */
     .pad { padding: 0 22px 24px; flex: 1; overflow-y: auto; }
@@ -251,10 +247,6 @@
     .modal-overlay.show { display: flex; }
     .sheet { width: 100%; max-width: 600px; margin: 0 auto; background: var(--bg); border-radius: 20px 20px 0 0; padding: 20px 22px calc(22px + env(safe-area-inset-bottom)); animation: inBottom .25s ease; }
     .sheet h4 { font-size: 11px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px; }
-    .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .type-card { display: flex; align-items: center; gap: 10px; padding: 14px; border-radius: 12px; border: .5px solid var(--border); background: var(--card-bg); font-size: 14px; color: var(--text); cursor: pointer; }
-    .type-card.sel { border-color: var(--accent); border-width: 1.5px; }
-    .type-card i { font-size: 18px; color: var(--accent); }
     .sheet-row { padding: 14px 4px; font-size: 15px; color: var(--text); border-bottom: .5px solid var(--hairline); cursor: pointer; }
     .sheet-row:last-child { border-bottom: none; }
 
@@ -269,16 +261,15 @@
   <div class="screen active" id="screen-home">
     <div class="home-top">
       <div class="wordmark">Ink<span class="dot">.</span></div>
-      <button class="plus-btn" aria-label="New entry" data-nav="compose"><i class="ti ti-plus"></i></button>
     </div>
-    <div class="nav-zone zone-top" data-dir="up" aria-label="Today"></div>
-    <div class="nav-zone zone-bottom" data-dir="down" aria-label="Reflect"></div>
+    <div class="nav-zone zone-top" data-dir="up" aria-label="Capture"></div>
+    <div class="nav-zone zone-bottom" data-dir="down" aria-label="Journal"></div>
     <div class="nav-zone zone-left" data-dir="left" aria-label="Stoic"></div>
-    <div class="nav-zone zone-right" data-dir="right" aria-label="Thoughts"></div>
-    <div class="edge-label edge-top">▲ TODAY</div>
+    <div class="nav-zone zone-right" data-dir="right" aria-label="Mind"></div>
+    <div class="edge-label edge-top">▲ CAPTURE</div>
     <div class="edge-label edge-left">◀ STOIC</div>
-    <div class="edge-label edge-right">THOUGHTS ▶</div>
-    <div class="edge-label edge-bottom">REFLECT ▼</div>
+    <div class="edge-label edge-right">MIND ▶</div>
+    <div class="edge-label edge-bottom">JOURNAL ▼</div>
     <div class="canvas-center">
       <div class="day-of-week" id="home-dow">—</div>
       <div class="big-date" id="home-date">—</div>
@@ -291,14 +282,34 @@
       </div>
     </div>
     <div class="active-chip" id="active-chip"><i class="ti ti-flame"></i><span id="active-chip-text"></span></div>
-    <div class="lp-hint" id="lp-hint">LONG PRESS · OPEN JOURNAL</div>
+    <div class="lp-hint" id="lp-hint">LONG PRESS · MENU</div>
   </div>
 
-  <!-- ══ TODAY (habits + day log) ══ -->
-  <div class="screen" id="screen-today">
+  <!-- ══ CAPTURE (swipe up) — one freeform thought, no parse, no review ══ -->
+  <div class="screen" id="screen-capture">
     <div class="topbar">
-      <div class="crumb">Today · Day Log</div>
-      <button class="icon-btn" data-nav="habits-manage" aria-label="Manage habits"><i class="ti ti-dots"></i></button>
+      <div class="crumb">Capture</div>
+      <div style="display:flex;gap:4px">
+        <button class="icon-btn" id="capture-home" aria-label="Home"><i class="ti ti-home"></i></button>
+        <button class="icon-btn" id="capture-close" aria-label="Close"><i class="ti ti-x"></i></button>
+      </div>
+    </div>
+    <div class="compose-area">
+      <div class="date-line" id="capture-date">—</div>
+      <textarea class="compose" id="capture-text" placeholder="What's on your mind?"></textarea>
+    </div>
+    <div class="bottom-bar">
+      <span class="meta-text" id="capture-count">0 chars</span>
+      <button class="btn btn-primary" id="capture-save" disabled>Save <i class="ti ti-check"></i></button>
+    </div>
+  </div>
+
+  <!-- ══ JOURNAL (swipe down) — day surface + read timeline ══ -->
+  <div class="screen" id="screen-journal">
+    <div class="topbar">
+      <button class="icon-btn" id="journal-back" aria-label="Back"><i class="ti ti-arrow-left"></i></button>
+      <div class="screen-title">Journal</div>
+      <button class="icon-btn" id="journal-search" aria-label="Search"><i class="ti ti-search"></i></button>
     </div>
     <div class="habit-strip" id="habit-strip"></div>
     <div class="log-wrap">
@@ -313,58 +324,24 @@
       </div>
     </div>
     <div class="open-days" id="open-days"></div>
-  </div>
-
-  <!-- ══ COMPOSE (write) ══ -->
-  <div class="screen" id="screen-compose">
-    <div class="topbar">
-      <div class="crumb">New Entry</div>
-      <div style="display:flex;gap:4px">
-        <button class="icon-btn" id="compose-home" aria-label="Home"><i class="ti ti-home"></i></button>
-        <button class="icon-btn" id="compose-close" aria-label="Close"><i class="ti ti-x"></i></button>
-      </div>
-    </div>
-    <div class="compose-area">
-      <div class="date-line" id="compose-date">—</div>
-      <textarea class="compose" id="compose-text" placeholder="What's worth keeping?"></textarea>
-    </div>
-    <div class="bottom-bar">
-      <span class="meta-text" id="compose-count">0 chars</span>
-      <button class="btn btn-primary" id="compose-review" disabled>Review <i class="ti ti-arrow-right"></i></button>
-    </div>
-  </div>
-
-  <!-- ══ COMPOSE REVIEW ══ -->
-  <div class="screen" id="screen-compose-review">
-    <div class="topbar">
-      <div class="crumb">Confirm Filing</div>
-      <div style="display:flex;gap:4px">
-        <button class="icon-btn" id="review-home" aria-label="Home"><i class="ti ti-home"></i></button>
-        <button class="icon-btn" id="review-close" aria-label="Back"><i class="ti ti-x"></i></button>
-      </div>
-    </div>
-    <div class="review-area">
-      <div class="review-heading">Filing as</div>
-      <div id="review-body"></div>
-    </div>
-    <div class="bottom-bar">
-      <button class="btn btn-secondary" id="review-edit" style="flex:1">Edit</button>
-      <button class="btn btn-primary" id="review-file" style="flex:1.4">File <i class="ti ti-check"></i></button>
-    </div>
-  </div>
-
-  <!-- ══ JOURNAL ══ -->
-  <div class="screen" id="screen-journal">
-    <div class="topbar">
-      <button class="icon-btn" id="journal-back" aria-label="Back"><i class="ti ti-arrow-left"></i></button>
-      <div class="screen-title">Journal</div>
-      <button class="icon-btn" id="journal-search" aria-label="Search"><i class="ti ti-search"></i></button>
-    </div>
+    <div class="journal-sep"></div>
     <div class="chips-row" id="journal-chips"></div>
     <div class="timeline" id="journal-timeline"></div>
   </div>
 
-  <!-- ══ STOIC ══ -->
+  <!-- ══ MIND (swipe right) — Thoughts · Insights · Mantras ══ -->
+  <div class="screen" id="screen-mind">
+    <div class="topbar">
+      <button class="icon-btn" id="mind-back" aria-label="Back"><i class="ti ti-arrow-left"></i></button>
+      <div class="screen-title">Mind</div>
+      <span style="width:30px"></span>
+    </div>
+    <div class="mind-tabs" id="mind-tabs"></div>
+    <div class="mind-toolbar"><span id="mind-count"></span><span class="mind-toggle" id="mind-toggle">Show dismissed</span></div>
+    <div class="mind-list" id="mind-list"></div>
+  </div>
+
+  <!-- ══ STOIC (swipe left) — sole writer of reflections ══ -->
   <div class="screen" id="screen-stoic">
     <div class="topbar">
       <div class="crumb">Stoic Practice</div>
@@ -377,33 +354,7 @@
     </div>
   </div>
 
-  <!-- ══ THOUGHTS ══ -->
-  <div class="screen" id="screen-thoughts">
-    <div class="topbar">
-      <div class="crumb">Thoughts</div>
-      <button class="icon-btn" id="thoughts-back" aria-label="Back"><i class="ti ti-arrow-left"></i></button>
-    </div>
-    <div class="pad">
-      <textarea class="input" id="thoughts-text" placeholder="A raw thought — no review, no filing." style="min-height:240px"></textarea>
-      <button class="btn btn-primary" id="thoughts-save" style="margin-top:14px;width:100%">Save thought</button>
-    </div>
-  </div>
-
-  <!-- ══ REFLECT ══ -->
-  <div class="screen" id="screen-reflect">
-    <div class="topbar">
-      <div class="crumb">Reflect</div>
-      <button class="icon-btn" id="reflect-back" aria-label="Back"><i class="ti ti-arrow-left"></i></button>
-    </div>
-    <div class="pad">
-      <div class="prompt-banner" id="reflect-prompt">Take a breath. What's present for you right now?</div>
-      <textarea class="input" id="reflect-text" placeholder="Write freely…"></textarea>
-      <input class="input" id="reflect-mood" placeholder="Mood (optional)" style="margin-top:12px" />
-      <button class="btn btn-primary" id="reflect-save" style="margin-top:14px;width:100%">Save reflection</button>
-    </div>
-  </div>
-
-  <!-- ══ API KEY / SETTINGS ══ -->
+  <!-- ══ SETTINGS / API KEY ══ -->
   <div class="screen" id="screen-apikey">
     <div class="topbar">
       <div class="crumb">Settings</div>
@@ -431,7 +382,7 @@
     </div>
   </div>
 
-  <!-- ══ Carryover stubs ══ -->
+  <!-- ══ Carryover stubs (reached via long-press Menu) ══ -->
   <div class="screen" id="screen-habits-manage">
     <div class="topbar"><div class="crumb">Manage Habits</div><button class="icon-btn" data-back aria-label="Back"><i class="ti ti-x"></i></button></div>
     <div class="pad">
@@ -450,13 +401,9 @@
     <div class="topbar"><div class="crumb">Challenges</div><button class="icon-btn" data-back aria-label="Back"><i class="ti ti-x"></i></button></div>
     <div class="pad" id="challenges-list"></div>
   </div>
-  <div class="screen" id="screen-insights">
-    <div class="topbar"><div class="crumb">Insights</div><button class="icon-btn" data-back aria-label="Back"><i class="ti ti-x"></i></button></div>
-    <div class="pad"><p class="stub-note">Flagged insights carry over from Still. Port pending — v1 task #7.</p></div>
-  </div>
   <div class="screen" id="screen-pattern">
     <div class="topbar"><div class="crumb">Pattern</div><button class="icon-btn" data-back aria-label="Back"><i class="ti ti-x"></i></button></div>
-    <div class="pad" id="pattern-body"><p class="stub-note">Claude reads across day logs, restaurants, media, thoughts, reflections, habits and Oura to surface correlations. Expanded port pending — v1 task #7.</p></div>
+    <div class="pad" id="pattern-body"><p class="stub-note">Claude reads across day logs, restaurants, media, thoughts, reflections, habits and Oura to surface correlations. Expanded port pending.</p></div>
   </div>
 
   <div class="modal-overlay" id="modal-overlay"><div class="sheet" id="modal-sheet"></div></div>
@@ -598,32 +545,26 @@
     function goHome(){ navStack=[]; slideTo('home','right'); }
     function onEnter(id){
       if(id==='home'){ renderHome(); refreshContentSlot(); maybeHideLpHint(); }
-      if(id==='today'){ renderTodayHead(); loadHabits(); loadTodayLog(); loadOpenDays(); }
-      if(id==='compose'){ resetCompose(); }
-      if(id==='journal'){ loadJournal(); }
+      if(id==='capture'){ resetCapture(); }
+      if(id==='journal'){ openJournal(); }
+      if(id==='mind'){ loadMind(); }
       if(id==='stoic'){ initStoic(); }
-      if(id==='reflect'){ renderReflectPrompt(); }
-      if(id==='thoughts'){ document.getElementById('thoughts-text').value=''; }
       if(id==='habits-manage'){ loadHabitsManage(); }
       if(id==='prompt-library'){ loadPromptLibrary(); }
       if(id==='challenges'){ loadChallenges(); }
     }
-    document.querySelectorAll('[data-nav]').forEach(c=> c.addEventListener('click', ()=> navigate(c.dataset.nav, c.dataset.nav==='compose'?'bottom':undefined)));
+    document.querySelectorAll('[data-nav]').forEach(c=> c.addEventListener('click', ()=> navigate(c.dataset.nav)));
     document.querySelectorAll('[data-back]').forEach(c=> c.addEventListener('click', ()=> goBack()));
-    ['journal-back','thoughts-back','reflect-back','apikey-back','compose-close','review-edit'].forEach(()=>{});
     document.getElementById('journal-back').addEventListener('click', ()=> goBack());
-    document.getElementById('thoughts-back').addEventListener('click', ()=> goBack());
-    document.getElementById('reflect-back').addEventListener('click', ()=> goBack());
+    document.getElementById('mind-back').addEventListener('click', ()=> goBack());
     document.getElementById('apikey-back').addEventListener('click', ()=> goBack());
-    document.getElementById('compose-close').addEventListener('click', ()=> goBack());
-    document.getElementById('compose-home').addEventListener('click', goHome);
-    document.getElementById('review-home').addEventListener('click', goHome);
-    document.getElementById('review-close').addEventListener('click', ()=> slideTo('compose'));
-    document.getElementById('review-edit').addEventListener('click', ()=> slideTo('compose'));
+    document.getElementById('capture-close').addEventListener('click', ()=> goBack());
+    document.getElementById('capture-home').addEventListener('click', goHome);
 
     // ── Gestures (swipe + long-press), ported from Still ──
     const SWIPE_MIN=50, SWIPE_RATIO=1.4, SWIPE_MAX_TIME=600;
-    const HOME_NAV={ up:['today','bottom'], down:['reflect','top'], left:['stoic','right'], right:['thoughts','left'] };
+    // up=Capture(from bottom)  down=Journal(from top)  left=Stoic(from right)  right=Mind(from left)
+    const HOME_NAV={ up:['capture','bottom'], down:['journal','top'], left:['stoic','right'], right:['mind','left'] };
     let touchStart=null;
     function onTouchStart(e){ if(transitioning) return; const t=e.touches?e.touches[0]:e; touchStart={x:t.clientX,y:t.clientY,time:Date.now()}; }
     function onTouchEnd(e){
@@ -644,25 +585,25 @@
     function handleSwipe(dir, startX){
       const c=cur();
       if(c==='home'){ const dest=HOME_NAV[dir]; if(dest) navigate(dest[0], dest[1]); return; }
-      if(c==='compose'||c==='compose-review') return; // dedicated × only
       // Universal back: swipe right from the left edge of any non-home screen.
       if(dir==='right' && startX<40){ goBack('right'); return; }
-      if(c==='today' && dir==='down'){ goBack('down'); return; }
+      // Reverse-of-entry back gestures for the four primary surfaces.
+      if(c==='capture' && dir==='down'){ goBack('down'); return; }
+      if(c==='journal' && dir==='up'){ goBack('up'); return; }
       if(c==='stoic' && dir==='right'){ goBack('right'); return; }
-      if(c==='reflect' && dir==='up'){ goBack('up'); return; }
-      if(c==='thoughts' && dir==='left'){ goBack('left'); return; }
+      if(c==='mind' && dir==='left'){ goBack('left'); return; }
     }
     document.addEventListener('touchstart', onTouchStart, {passive:true});
     document.addEventListener('touchend', onTouchEnd, {passive:true});
 
-    // Long-press on home canvas → journal. longPressFired suppresses the
+    // Long-press on home canvas → Options menu. longPressFired suppresses the
     // click that fires on pointerup so a long-press doesn't also trip a zone.
     let pressTimer=null, pressMoved=false, pStart=null, longPressFired=false;
     const canvas=document.getElementById('screen-home');
     canvas.addEventListener('pointerdown', e=>{
-      if(e.target.closest('.plus-btn')||e.target.closest('.active-chip')) return;
+      if(e.target.closest('.active-chip')) return;
       pressMoved=false; longPressFired=false; pStart={x:e.clientX,y:e.clientY};
-      pressTimer=setTimeout(()=>{ if(!pressMoved){ longPressFired=true; bumpLpHint(); navigate('journal','bottom'); } }, 500);
+      pressTimer=setTimeout(()=>{ if(!pressMoved){ longPressFired=true; bumpLpHint(); openOptions(); } }, 500);
     });
     canvas.addEventListener('pointermove', e=>{ if(!pStart) return; if((e.clientX-pStart.x)**2+(e.clientY-pStart.y)**2>144){ pressMoved=true; clearTimeout(pressTimer); } });
     ['pointerup','pointerleave','pointercancel'].forEach(ev=> canvas.addEventListener(ev, ()=> clearTimeout(pressTimer)));
@@ -675,6 +616,14 @@
 
     function bumpLpHint(){ const n=(+localStorage.getItem('ink_lp_hint_count')||0)+1; localStorage.setItem('ink_lp_hint_count', n); }
     function maybeHideLpHint(){ if((+localStorage.getItem('ink_lp_hint_count')||0)>=5) document.getElementById('lp-hint').classList.add('hidden'); }
+
+    // ── Options menu (long-press) ──
+    function openOptions(){
+      const rows=[['Settings','apikey'],['Challenges','challenges'],['Manage habits','habits-manage'],['Prompt library','prompt-library'],['Pattern','pattern']];
+      showModal('<h4>Menu</h4>'+rows.map(([l,id])=> '<div class="sheet-row" data-go="'+id+'">'+l+'</div>').join(''), ()=>{
+        document.querySelectorAll('#modal-sheet .sheet-row').forEach(r=> r.addEventListener('click', ()=>{ hideModal(); navigate(r.dataset.go); }));
+      });
+    }
 
     // ════ HOME ════
     function renderHome(){
@@ -702,7 +651,7 @@
       hl.classList.add('hidden'); cta.classList.add('hidden');
       const slot=document.getElementById('content-slot'); slot.onclick=null;
 
-      // 1 — Morning intention check-in
+      // 1 — Morning intention check-in (tap routes to Stoic — the reflection surface)
       try{
         const rows=await sbFetch('reflections?date=eq.'+today()+'&tags=cs.%7Bstoic%7D&prompt_used=eq.Morning%20Intention&order=created_at.desc&limit=1');
         const row=rows?.[0];
@@ -713,7 +662,7 @@
             line.innerHTML=esc(blurb.line);
             if(blurb.highlight){ hl.textContent='“'+blurb.highlight+'”'; hl.classList.remove('hidden'); }
             cta.classList.remove('hidden');
-            slot.onclick=()=>{ if(longPressFired) return; reflectPromptOverride=blurb.line; navigate('reflect','bottom'); };
+            slot.onclick=()=>{ if(longPressFired) return; navigate('stoic','right'); };
             return;
           }
         }
@@ -758,7 +707,36 @@
       }catch{ return { reflection_id:row.id, intention:'', highlight:(row.text||'').slice(0,90), line:'You set a morning intention today. How has it shown up?' }; }
     }
 
-    // ════ TODAY ════
+    // ════ CAPTURE ════
+    function resetCapture(){
+      const d=new Date();
+      document.getElementById('capture-date').innerHTML=
+        DOW[d.getDay()]+', '+d.getDate()+' '+MONTHS[d.getMonth()]+
+        ' <span class="dot">·</span> '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}).toLowerCase();
+      document.getElementById('capture-text').value=''; updateCaptureCount();
+    }
+    function updateCaptureCount(){
+      const n=document.getElementById('capture-text').value.trim().length;
+      document.getElementById('capture-count').textContent=n+' chars';
+      document.getElementById('capture-save').disabled = n<1;
+    }
+    document.getElementById('capture-text').addEventListener('input', updateCaptureCount);
+    document.getElementById('capture-save').addEventListener('click', saveCapture);
+    async function saveCapture(){
+      const text=document.getElementById('capture-text').value.trim(); if(!text) return;
+      const btn=document.getElementById('capture-save'); btn.disabled=true;
+      try{
+        const ent=await sbFetch('entries',{method:'POST',prefer:'return=representation',
+          body:JSON.stringify({raw_text:text, primary_type:'thought', source_surface:'thoughts_screen'})});
+        await sbFetch('thoughts',{method:'POST',
+          body:JSON.stringify({source_entry_id:ent?.[0]?.id||null, text, thought_date:today(), status:'active'})});
+        showToast('Captured'); navStack=[]; slideTo('home','right');
+      }catch(e){ showToast('Save failed — '+e.message); btn.disabled=false; }
+    }
+
+    // ════ JOURNAL — day surface + timeline ════
+    function openJournal(){ renderTodayHead(); loadHabits(); loadTodayLog(); loadOpenDays(); loadJournal(); }
+
     function renderTodayHead(){
       const d=new Date();
       document.getElementById('log-date-prefix').textContent = d.getDate()+DOW_LETTER[d.getDay()];
@@ -768,7 +746,7 @@
       const strip=document.getElementById('habit-strip'); strip.innerHTML='';
       try{
         const habits=await sbFetch('habits?active=eq.true&order=created_at.asc');
-        if(!habits||!habits.length){ strip.innerHTML='<span class="meta-text">No habits yet — tap ⋯ to add</span>'; return; }
+        if(!habits||!habits.length){ strip.innerHTML='<span class="meta-text">No habits yet — long-press home → Manage habits</span>'; return; }
         const logs=await sbFetch('habit_logs?date=eq.'+today()) || [];
         const doneIds=new Set(logs.map(l=> l.habit_id));
         strip.innerHTML=habits.map(h=>{
@@ -869,8 +847,8 @@
       const title=DOW[d.getDay()]+', '+d.getDate()+' '+MONTHS[d.getMonth()];
       showModal('<h4>Backfill — '+esc(title)+'</h4>'+
         '<textarea class="input" id="bf-text" placeholder="What happened that day?" style="min-height:160px"></textarea>'+
-        '<button class="btn btn-primary" id="bf-save" style="margin-top:12px;width:100%">Save day</button>', ()=>{
-        document.getElementById('bf-save').addEventListener('click', async ()=>{
+        '<button class="btn btn-primary" id="sheet-primary" style="margin-top:12px;width:100%">Save day</button>', ()=>{
+        document.getElementById('sheet-primary').addEventListener('click', async ()=>{
           const text=document.getElementById('bf-text').value.trim(); if(!text) return;
           try{
             const ent=await sbFetch('entries',{method:'POST',prefer:'return=representation',
@@ -882,111 +860,8 @@
       });
     }
 
-    // ════ COMPOSE + flow ════
-    let composeParsed=null, forcedType=null;
-    function resetCompose(){
-      const d=new Date();
-      document.getElementById('compose-date').innerHTML='Friday, 15 May'.replace('Friday',DOW[d.getDay()]).replace('15',d.getDate()).replace('May',MONTHS[d.getMonth()])+
-        ' <span class="dot">·</span> '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}).toLowerCase();
-      document.getElementById('compose-text').value=''; updateComposeCount(); forcedType=null; composeParsed=null;
-    }
-    function updateComposeCount(){
-      const n=document.getElementById('compose-text').value.length;
-      document.getElementById('compose-count').textContent=n+' chars';
-      document.getElementById('compose-review').disabled = n<3;
-    }
-    document.getElementById('compose-text').addEventListener('input', updateComposeCount);
-    document.getElementById('compose-review').addEventListener('click', async ()=>{
-      const text=document.getElementById('compose-text').value.trim(); if(text.length<3) return;
-      if(!requireApiKey('Reviewing an entry needs an Anthropic API key so Ink can parse and file it.')) return; // F3
-      navigate('compose-review');
-      document.getElementById('review-body').innerHTML='<div class="spinner"></div>';
-      try{ composeParsed=await parseCompose(text, forcedType); renderReview(composeParsed); }
-      catch(e){ document.getElementById('review-body').innerHTML='<p class="stub-note">Couldn’t parse — '+esc(e.message)+'</p>'; }
-    });
-    async function parseCompose(text, force){
-      return await callClaude(
-        'You file a personal record. Pick the dominant primary_type and extract every implied record. '+
-        (force?'The user forces primary_type = "'+force+'". ':'')+
-        'Types: day, restaurant, media, thought, reflection. Return JSON: '+
-        '{ "primary_type":"", "summary":"<one plain-language line>", '+
-        '"restaurant":{"place_name":"","with_people":[],"dishes":[],"note":"<<=12 word literal pull>","would_return":null}, '+
-        '"media":[{"title":"","format":"film|tv|book|podcast|other","note":"","rating":null}], '+
-        '"thought":{"text":""}, "reflection":{"text":"","mood":"","tags":[]}, '+
-        '"day":{"include":true,"text":"","extracted_entities":{"restaurants":[],"media":[],"people":[],"places":[],"activities":[],"cooking":[]}} }. '+
-        'Only populate sub-objects relevant to the prose; leave others null. Always include a day record unless the prose is purely a standalone thought/reflection.\n\nProse: '+text, 1500);
-    }
+    // ════ JOURNAL TIMELINE ════
     const TYPE_META={ day:['ti-book','Day log'], restaurant:['ti-tools-kitchen-2','Restaurant visit'], media:['ti-player-play','Media'], thought:['ti-quote','Thought'], reflection:['ti-feather','Reflection'] };
-    function renderReview(p){
-      const t=p.primary_type||'day'; const [icon,name]=TYPE_META[t]||TYPE_META.day;
-      const d=new Date(); const dateSub=DOW[d.getDay()]+', '+d.getDate()+' '+MONTHS[d.getMonth()];
-      let fields='';
-      if(t==='restaurant'){ const r=p.restaurant||{};
-        fields=field('Place', pill(r.place_name))+field('With', (r.with_people||[]).map(pill).join('')||'—')+
-          field('Had', (r.dishes||[]).map(pill).join('')||'—')+field('Note', snip(r.note)); }
-      else if(t==='media'){ const m=(p.media||[])[0]||{};
-        fields=field('Title', pill(m.title))+field('Format', pill(m.format))+field('Note', snip(m.note))+(m.rating?field('Rating', '★'.repeat(m.rating)+'☆'.repeat(5-m.rating)):''); }
-      else if(t==='thought'){ fields=field('Body', '<span class="prose-snippet">'+esc(p.thought?.text||p.summary||'')+'</span>'); }
-      else if(t==='reflection'){ const rf=p.reflection||{};
-        fields=field('Body', '<span class="prose-snippet">'+esc(rf.text||p.summary||'')+'</span>')+(rf.mood?field('Mood', pill(rf.mood)):'')+(rf.tags?.length?field('Tags', rf.tags.map(pill).join('')):''); }
-      else { fields=field('Date','today')+field('Log', '<span class="prose-snippet">'+esc(p.day?.text||p.summary||'')+'</span>'); }
-
-      const also=[];
-      if(t!=='day' && p.day && p.day.include!==false) also.push(['ti-book','Day log — adds to today’s entry']);
-      if(t!=='media') for(const m of (p.media||[])) if(m&&m.title) also.push(['ti-player-play','Media — <strong>'+esc(m.title)+'</strong> ('+esc(m.format||'media')+')']);
-      if(t!=='restaurant' && p.restaurant && p.restaurant.place_name) also.push(['ti-tools-kitchen-2','Restaurant — <strong>'+esc(p.restaurant.place_name)+'</strong>']);
-
-      document.getElementById('review-body').innerHTML=
-        '<div class="filing-card"><div class="filing-type">'+
-          '<div class="type-glyph"><i class="ti '+icon+'"></i></div>'+
-          '<div><div class="type-name">'+name+'</div><div class="type-sub">'+dateSub+'</div></div>'+
-          '<span class="type-change" id="type-change">Change</span></div>'+
-          '<div class="filing-fields">'+fields+'</div></div>'+
-        (also.length?'<div class="also-attached"><div class="also-title">Also filing</div>'+
-          also.map(a=> '<div class="also-row"><i class="ti '+a[0]+'"></i><span>'+a[1]+'</span></div>').join('')+'</div>':'');
-      document.getElementById('type-change').addEventListener('click', openTypeChooser);
-    }
-    const field=(l,v)=> '<div class="field"><span class="field-label">'+l+'</span><span class="field-value">'+(v||'—')+'</span></div>';
-    const pill=(v)=> v?'<span class="pill">'+esc(v)+'</span>':'';
-    const snip=(v)=> v?'<span class="prose-snippet">"'+esc(v)+'"</span>':'—';
-    function openTypeChooser(){
-      const cards=Object.entries(TYPE_META).map(([k,[i,n]])=>
-        '<div class="type-card'+(k===(composeParsed?.primary_type)?' sel':'')+'" data-t="'+k+'"><i class="ti '+i+'"></i>'+n+'</div>').join('');
-      showModal('<h4>Filing as</h4><div class="type-grid">'+cards+'</div>', ()=>{
-        document.querySelectorAll('.type-card').forEach(c=> c.addEventListener('click', async ()=>{
-          forcedType=c.dataset.t; hideModal();
-          document.getElementById('review-body').innerHTML='<div class="spinner"></div>';
-          try{ composeParsed=await parseCompose(document.getElementById('compose-text').value.trim(), forcedType); renderReview(composeParsed); }
-          catch(e){ document.getElementById('review-body').innerHTML='<p class="stub-note">'+esc(e.message)+'</p>'; }
-        }));
-      });
-    }
-    document.getElementById('review-file').addEventListener('click', fileCompose);
-    async function fileCompose(){
-      const p=composeParsed; if(!p) return;
-      const text=document.getElementById('compose-text').value.trim();
-      const t=p.primary_type||'day';
-      document.getElementById('review-file').disabled=true;
-      try{
-        const ent=await sbFetch('entries', {method:'POST', prefer:'return=representation',
-          body:JSON.stringify({raw_text:text, primary_type:t, source_surface:'unified_plus'})});
-        const sid=ent?.[0]?.id||null;
-        if(t==='restaurant' && p.restaurant) await sbFetch('restaurant_visits',{method:'POST',body:JSON.stringify({source_entry_id:sid, place_name:p.restaurant.place_name, with_people:p.restaurant.with_people||[], dishes:p.restaurant.dishes||[], note:p.restaurant.note||null, would_return:p.restaurant.would_return??null})});
-        for(const m of (p.media||[])) if(m&&m.title) await sbFetch('media_entries',{method:'POST',body:JSON.stringify({source_entry_id:sid, title:m.title, format:m.format||'other', note:m.note||null, rating:m.rating??null})});
-        if(t==='thought' && p.thought?.text) await sbFetch('thoughts',{method:'POST',body:JSON.stringify({source_entry_id:sid, text:p.thought.text})});
-        if(t==='reflection' && p.reflection?.text) await sbFetch('reflections',{method:'POST',body:JSON.stringify({source_entry_id:sid, text:p.reflection.text, mood:p.reflection.mood||null, tags:p.reflection.tags||[]})});
-        if(p.day && p.day.include!==false){
-          const dl=await sbFetch('day_logs?date=eq.'+today()+'&order=created_at.desc&limit=1');
-          const dtext=p.day.text||p.summary||text;
-          if(dl?.[0]) await sbFetch('day_logs?id=eq.'+dl[0].id,{method:'PATCH',body:JSON.stringify({text:(dl[0].text+' · '+dtext)})});
-          else await sbFetch('day_logs',{method:'POST',body:JSON.stringify({source_entry_id:sid, text:dtext, date:today(), extracted_entities:p.day.extracted_entities||{}})});
-        }
-        showToast('Filed'); navStack=[]; slideTo('home');
-      }catch(e){ showToast('Filing failed — '+e.message); }
-      finally{ document.getElementById('review-file').disabled=false; }
-    }
-
-    // ════ JOURNAL ════
     const J_TYPES=[['all','All',''],['day','Days','ti-book'],['restaurant','Restaurants','ti-tools-kitchen-2'],['media','Media','ti-player-play'],['thought','Thoughts','ti-quote'],['reflection','Reflections','ti-feather']];
     let journalFilter='all';
     async function loadJournal(){
@@ -1046,6 +921,117 @@
     }
     document.getElementById('journal-search').addEventListener('click', ()=> showToast('Search — v1 task (spec §Journal)'));
 
+    // ════ MIND — Thoughts · Insights · Mantras ════
+    // NOTE: relies on the LOCKED-2026-05-18 migration (status / pushed_to_course;
+    // source_entry_id on insights). `insights` is Still's table — assumed `.text`.
+    const MIND_TABS=[
+      { k:'thoughts', label:'Thoughts', table:'thoughts', dateCol:'thought_date' },
+      { k:'insights', label:'Insights', table:'insights', dateCol:'created_at' },
+      { k:'mantras',  label:'Mantras',  table:'mantras',  dateCol:'created_at' },
+    ];
+    let mindTab='thoughts', mindShowDismissed=false, mindRows=[];
+    function renderMindTabs(){
+      document.getElementById('mind-tabs').innerHTML=MIND_TABS.map(t=>
+        '<button class="mind-tab'+(t.k===mindTab?' active':'')+'" data-k="'+t.k+'">'+t.label+'</button>').join('');
+      document.querySelectorAll('#mind-tabs .mind-tab').forEach(b=> b.addEventListener('click', ()=>{ mindTab=b.dataset.k; loadMind(); }));
+      const tog=document.getElementById('mind-toggle');
+      tog.textContent=mindShowDismissed?'Show active':'Show dismissed';
+      tog.onclick=()=>{ mindShowDismissed=!mindShowDismissed; loadMind(); };
+    }
+    async function loadMind(){
+      renderMindTabs();
+      const tab=MIND_TABS.find(t=> t.k===mindTab);
+      const listEl=document.getElementById('mind-list'); listEl.innerHTML='<div class="spinner"></div>';
+      const status=mindShowDismissed?'dismissed':'active';
+      try{
+        mindRows=await sbFetch(tab.table+'?status=eq.'+status+'&order=created_at.desc&limit=200') || [];
+        document.getElementById('mind-count').textContent=mindRows.length+' '+(status==='active'?'active':'dismissed');
+        if(!mindRows.length){ listEl.innerHTML='<p class="list-empty">'+(status==='active'?'Nothing here yet.':'No dismissed items.')+'</p>'; return; }
+        listEl.innerHTML=mindRows.map((r,i)=>{
+          const raw=r[tab.dateCol]||r.created_at||'';
+          const dd=raw?new Date(raw.length<=10?raw+'T12:00:00':raw).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+          const acts=[];
+          if(tab.k==='thoughts'){ acts.push(['to-insights','→ Insight']); acts.push(['to-mantras','→ Mantra']); }
+          if(tab.k==='insights'){ acts.push(['to-mantras','→ Mantra']); }
+          acts.push(['push','Push to Course']);
+          acts.push(mindShowDismissed?['resurface','Resurface']:['dismiss','Dismiss']);
+          acts.push(['delete','Delete']);
+          return '<div class="mind-item'+(mindShowDismissed?' dismissed':'')+'" data-i="'+i+'">'+
+            '<div class="mind-text">'+esc(r.text||'')+'</div>'+
+            '<div class="mind-meta">'+esc(dd)+(r.pushed_to_course?' · <span class="badge">Pushed to Course</span>':'')+(mindShowDismissed?' · Dismissed':'')+'</div>'+
+            '<div class="mind-actions">'+acts.map(([a,l])=>
+              '<button class="mind-act'+(a==='delete'||a==='dismiss'?' danger':'')+'" data-act="'+a+'">'+l+'</button>').join('')+
+            '</div></div>';
+        }).join('');
+        listEl.querySelectorAll('.mind-item').forEach(item=>{
+          const row=mindRows[+item.dataset.i];
+          item.querySelectorAll('[data-act]').forEach(b=> b.addEventListener('click', ()=> mindAction(b.dataset.act, tab, row)));
+        });
+      }catch(e){
+        listEl.innerHTML='<p class="stub-note">Couldn’t load — '+esc(e.message)+
+          '<br><br>If this mentions a missing column, the LOCKED-2026-05-18 migration in <code>supabase/schema.sql</code> hasn’t been run yet.</p>';
+      }
+    }
+    function mindAction(act, tab, row){
+      if(act==='to-insights') return promoteSheet(tab.table, row, 'insights', 'Insights');
+      if(act==='to-mantras')  return promoteSheet(tab.table, row, 'mantras', 'Mantras');
+      if(act==='push')        return pushSheet(tab.table, row);
+      if(act==='dismiss')     return setStatus(tab.table, row, 'dismissed');
+      if(act==='resurface')   return setStatus(tab.table, row, 'active');
+      if(act==='delete')      return deleteSheet(tab.table, row);
+    }
+    // Move = move, not copy: insert into target (carry text + source_entry_id where
+    // the target has it), then delete the source row.
+    function promoteSheet(fromTable, row, toTable, toLabel){
+      showModal('<h4>Move to '+toLabel+'</h4>'+
+        '<textarea class="input" id="pm-text" style="min-height:120px">'+esc(row.text||'')+'</textarea>'+
+        '<button class="btn btn-primary" id="sheet-primary" style="margin-top:12px;width:100%">Move to '+toLabel+'</button>', ()=>{
+        document.getElementById('sheet-primary').addEventListener('click', async ()=>{
+          const txt=document.getElementById('pm-text').value.trim(); if(!txt) return;
+          try{
+            const body={ text:txt, status:'active' };
+            if(toTable==='insights') body.source_entry_id=row.source_entry_id||null; // migration adds this col
+            await sbFetch(toTable,{method:'POST',body:JSON.stringify(body)});
+            await sbFetch(fromTable+'?id=eq.'+row.id,{method:'DELETE'});
+            hideModal(); showToast('Moved to '+toLabel); loadMind();
+          }catch(e){ showToast('Move failed — '+e.message); }
+        });
+      });
+    }
+    async function setStatus(table, row, status){
+      try{ await sbFetch(table+'?id=eq.'+row.id,{method:'PATCH',body:JSON.stringify({status})});
+        showToast(status==='dismissed'?'Dismissed':'Resurfaced'); loadMind();
+      }catch(e){ showToast('Failed — '+e.message); }
+    }
+    function deleteSheet(table, row){
+      showModal('<h4>Delete</h4><p class="stub-note" style="padding:6px 0 14px">Removes this entry permanently.</p>'+
+        '<div style="display:flex;gap:8px">'+
+          '<button class="btn btn-secondary" id="sheet-cancel" style="flex:1">Cancel</button>'+
+          '<button class="btn btn-primary" id="sheet-primary" style="flex:1">Delete</button></div>', ()=>{
+        document.getElementById('sheet-cancel').addEventListener('click', hideModal);
+        document.getElementById('sheet-primary').addEventListener('click', async ()=>{
+          try{ await sbFetch(table+'?id=eq.'+row.id,{method:'DELETE'}); hideModal(); showToast('Deleted'); loadMind(); }
+          catch(e){ showToast('Delete failed — '+e.message); }
+        });
+      });
+    }
+    // Push to Course — plain insert into the shared `course_captures` inbox.
+    function pushSheet(table, row){
+      const kinds=[['task','Task'],['project','Project'],['note','Note']];
+      showModal('<h4>Push to Course</h4>'+kinds.map(([k,l])=> '<div class="sheet-row" data-k="'+k+'">'+l+'</div>').join(''), ()=>{
+        document.querySelectorAll('#modal-sheet .sheet-row').forEach(r=> r.addEventListener('click', async ()=>{
+          const k=r.dataset.k;
+          try{
+            const body={ raw_text:'['+k+'] '+(row.text||''), status:'pending' };
+            if(k==='task') body.suggested_task_title=row.text||'';
+            await sbFetch('course_captures',{method:'POST',body:JSON.stringify(body)});
+            try{ await sbFetch(table+'?id=eq.'+row.id,{method:'PATCH',body:JSON.stringify({pushed_to_course:true})}); }catch{}
+            hideModal(); showToast('Pushed to Course'); loadMind();
+          }catch(e){ showToast('Push failed — '+e.message); }
+        }));
+      });
+    }
+
     // ════ STOIC ════
     let stoicType='morning', stoicPrompts=[];
     function initStoic(){
@@ -1094,33 +1080,6 @@
       }catch(e){ showToast('Save failed — '+e.message); }
     }
     document.getElementById('stoic-save').addEventListener('click', saveStoic);
-
-    // ════ THOUGHTS ════
-    document.getElementById('thoughts-save').addEventListener('click', async ()=>{
-      const text=document.getElementById('thoughts-text').value.trim(); if(!text) return;
-      try{
-        const ent=await sbFetch('entries',{method:'POST',prefer:'return=representation',body:JSON.stringify({raw_text:text, primary_type:'thought', source_surface:'thoughts_screen'})});
-        await sbFetch('thoughts',{method:'POST',body:JSON.stringify({source_entry_id:ent?.[0]?.id||null, text, thought_date:today()})});
-        showToast('Saved'); goBack();
-      }catch(e){ showToast('Save failed — '+e.message); }
-    });
-
-    // ════ REFLECT ════
-    let reflectPromptOverride=null;
-    function renderReflectPrompt(){
-      document.getElementById('reflect-prompt').textContent = reflectPromptOverride || 'Take a breath. What’s present for you right now?';
-      document.getElementById('reflect-text').value=''; document.getElementById('reflect-mood').value='';
-    }
-    document.getElementById('reflect-save').addEventListener('click', async ()=>{
-      const text=document.getElementById('reflect-text').value.trim(); if(!text) return;
-      const mood=document.getElementById('reflect-mood').value.trim();
-      const prompt=reflectPromptOverride||'';
-      try{
-        const ent=await sbFetch('entries',{method:'POST',prefer:'return=representation',body:JSON.stringify({raw_text:text, primary_type:'reflection', source_surface:'reflect_screen'})});
-        await sbFetch('reflections',{method:'POST',body:JSON.stringify({source_entry_id:ent?.[0]?.id||null, text, mood:mood||null, prompt_used:prompt||null, date:today()})});
-        reflectPromptOverride=null; showToast('Saved'); goBack();
-      }catch(e){ showToast('Save failed — '+e.message); }
-    });
 
     // ════ Settings / API key ════
     document.getElementById('apikey-save').addEventListener('click', ()=>{
@@ -1203,19 +1162,19 @@
         const a=await sbFetch('active_challenges?order=created_at.desc')||[];
         el.innerHTML = a.length ? a.map(x=>
           '<div class="stoic-prompt-item"><div class="stoic-prompt-q">'+esc((x.challenge_key||'').replace(/-/g,' '))+'</div>'+
-          '<div class="stoic-prompt-dots">started '+esc(x.start_date)+(x.completed?' · done':'')+'</div></div>').join('') : '<p class="list-empty">No active challenges. Full library ports in v1 task #7.</p>';
+          '<div class="stoic-prompt-dots">started '+esc(x.start_date)+(x.completed?' · done':'')+'</div></div>').join('') : '<p class="list-empty">No active challenges.</p>';
       }catch(e){ el.innerHTML='<p class="stub-note">'+esc(e.message)+'</p>'; }
     }
 
     // ── B1: ⌘/Ctrl+Enter submits the active entry surface ──
     function submitActive(){
       const ov=document.getElementById('modal-overlay');
-      if(ov.classList.contains('show')){ const b=document.getElementById('bf-save'); if(b) b.click(); return; }
+      if(ov.classList.contains('show')){ const b=document.querySelector('#modal-sheet .btn-primary'); if(b) b.click(); return; }
       const c=cur();
-      if(c==='today'){ const t=document.getElementById('log-text').value.trim(); if(t){ saveTodayLog(); showToast('Saved'); } return; }
+      if(c==='capture'){ const b=document.getElementById('capture-save'); if(b && !b.disabled) b.click(); return; }
+      if(c==='journal'){ const t=document.getElementById('log-text'); if(t && t.value.trim()){ saveTodayLog(); showToast('Saved'); } return; }
       if(c==='stoic'){ saveStoic(); return; }
-      const map={ compose:'compose-review', 'compose-review':'review-file', thoughts:'thoughts-save', reflect:'reflect-save', apikey:'apikey-save' };
-      const id=map[c]; if(id){ const btn=document.getElementById(id); if(btn && !btn.disabled) btn.click(); }
+      if(c==='apikey'){ document.getElementById('apikey-save').click(); return; }
     }
     document.addEventListener('keydown', e=>{
       if((e.metaKey||e.ctrlKey) && (e.key==='Enter'||e.keyCode===13)){ e.preventDefault(); submitActive(); }

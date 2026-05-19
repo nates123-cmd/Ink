@@ -93,3 +93,24 @@ create index if not exists idx_media_entries_date     on media_entries(consumed_
 create index if not exists idx_media_entries_title    on media_entries(title);
 create index if not exists idx_thoughts_date          on thoughts(thought_date desc);
 create index if not exists idx_entries_composed       on entries(composed_at desc);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Navigation & Mind redesign — LOCKED 2026-05-18.
+-- Additive/idempotent; no DROP, no data mutation. `mantras` is shared with Break
+-- (Break selects only `text`) — the new nullable columns are inert to it.
+-- ─────────────────────────────────────────────────────────────────────────────
+alter table thoughts add column if not exists status text not null default 'active'
+  check (status in ('active','dismissed'));
+alter table thoughts add column if not exists pushed_to_course boolean not null default false;
+
+alter table insights add column if not exists source_entry_id uuid references entries(id) on delete set null;
+alter table insights add column if not exists status text not null default 'active'
+  check (status in ('active','dismissed'));
+alter table insights add column if not exists pushed_to_course boolean not null default false;
+
+alter table mantras  add column if not exists status text not null default 'active'
+  check (status in ('active','dismissed'));
+alter table mantras  add column if not exists pushed_to_course boolean not null default false;
+
+create index if not exists idx_thoughts_status on thoughts(status, created_at desc);
+create index if not exists idx_insights_status on insights(status, created_at desc);
