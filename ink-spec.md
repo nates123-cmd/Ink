@@ -29,7 +29,7 @@ The fourth app in the personal OS suite alongside Tick, Break, Tide, Course, Pat
 
 ## Navigation & Mind redesign — LOCKED 2026-05-18
 
-**Authoritative.** Supersedes, below: §Architecture overview, §Home screen (gestures/edge labels/slot targets), §Today screen (removed), §Compose screen (removed), §Journal screen (now also the day surface), §Stoic / Thoughts / Reflect (Thoughts & Reflect folded), §Routing and navigation. Older sections kept for history under a supersede banner. Not yet implemented — this step is spec-lock only.
+**Authoritative.** Supersedes, below: §Architecture overview, §Home screen (gestures/edge labels/slot targets), §Today screen (removed), §Compose screen (removed), §Journal screen (now also the day surface), §Stoic / Thoughts / Reflect (Thoughts & Reflect folded), §Routing and navigation. Older sections kept for history under a supersede banner. **SHIPPED 2026-05-18 — implemented and deployed live (`ink-v3`).**
 
 ### Gesture model (home)
 
@@ -75,7 +75,7 @@ Course's inbox is the **`course_captures`** table on the **same shared Supabase 
 
 Ink's "Push to Course" (every Mind row, any stage): a small **Task / Project / Note** chooser, then `INSERT course_captures { raw_text, status:'pending' }` where `raw_text` carries a type hint (prefix `[task] ` / `[project] ` / `[note] `), and for **Task** also set `suggested_task_title` to the item text. Set the Ink-side row's `pushed_to_course = true` for a badge; the row does not move. Plain insert into an existing table — no Course-side work.
 
-### Additive schema migration — NOT YET APPLIED (run when build is greenlit)
+### Additive schema migration — APPLIED 2026-05-18
 
 ```sql
 alter table thoughts add column if not exists status text not null default 'active'
@@ -94,9 +94,9 @@ create index if not exists idx_insights_status on insights(status, created_at de
 
 Additive/idempotent; no DROP, no data mutation. `mantras` is shared with Break — the new nullable columns are inert to Break (it selects `text`).
 
-### Build order (when greenlit — not this step)
+### Build order — COMPLETED 2026-05-18
 
-1. Apply migration. 2. Rebuild home gesture map + edge labels + long-press menu; delete Today/Compose/Reflect screens. 3. Journal absorbs habit strip + day-log + open-days. 4. Capture screen. 5. Mind 3-tab surface + promote/dismiss/resurface/delete. 6. Push-to-Course. 7. `sw.js` `ink-v2→ink-v3`, syntax check, commit, deploy.
+1. ✅ Apply migration. 2. ✅ Rebuild home gesture map + edge labels + long-press menu; delete Today/Compose/Reflect screens. 3. ✅ Journal absorbs habit strip + day-log + open-days. 4. ✅ Capture screen. 5. ✅ Mind 3-tab surface + promote/dismiss/resurface/delete. 6. ✅ Push-to-Course. 7. ✅ `sw.js` `ink-v2→ink-v3`, syntax check, commit, deploy.
 
 ---
 
@@ -744,4 +744,4 @@ Same design grammar as the rest of the suite: single column, generous gutters, b
 
 ---
 
-*Last updated: May 15, 2026. Drafted in conversation with Claude. Successor to Still — replaces Still entirely.*
+*Last updated: May 18, 2026 — Navigation & Mind redesign shipped live (`ink-v3`). Drafted in conversation with Claude. Successor to Still — replaces Still entirely.*
