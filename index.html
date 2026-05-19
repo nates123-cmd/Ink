@@ -262,14 +262,14 @@
     <div class="home-top">
       <div class="wordmark">Ink<span class="dot">.</span></div>
     </div>
-    <div class="nav-zone zone-top" data-dir="up" aria-label="Capture"></div>
-    <div class="nav-zone zone-bottom" data-dir="down" aria-label="Journal"></div>
-    <div class="nav-zone zone-left" data-dir="left" aria-label="Stoic"></div>
-    <div class="nav-zone zone-right" data-dir="right" aria-label="Mind"></div>
-    <div class="edge-label edge-top">▲ CAPTURE</div>
+    <div class="nav-zone zone-top" data-edge="top" aria-label="Journal"></div>
+    <div class="nav-zone zone-bottom" data-edge="bottom" aria-label="Capture"></div>
+    <div class="nav-zone zone-left" data-edge="left" aria-label="Stoic"></div>
+    <div class="nav-zone zone-right" data-edge="right" aria-label="Mind"></div>
+    <div class="edge-label edge-top">JOURNAL ▼</div>
     <div class="edge-label edge-left">◀ STOIC</div>
     <div class="edge-label edge-right">MIND ▶</div>
-    <div class="edge-label edge-bottom">JOURNAL ▼</div>
+    <div class="edge-label edge-bottom">CAPTURE ▲</div>
     <div class="canvas-center">
       <div class="day-of-week" id="home-dow">—</div>
       <div class="big-date" id="home-date">—</div>
@@ -344,7 +344,10 @@
   <!-- ══ STOIC (swipe left) — sole writer of reflections ══ -->
   <div class="screen" id="screen-stoic">
     <div class="topbar">
-      <div class="crumb">Stoic Practice</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="icon-btn" id="stoic-back" aria-label="Back"><i class="ti ti-arrow-left"></i></button>
+        <div class="crumb">Stoic Practice</div>
+      </div>
       <button class="icon-btn" data-nav="prompt-library" aria-label="Prompt library"><i class="ti ti-bookmarks"></i></button>
     </div>
     <div class="pad">
@@ -557,14 +560,20 @@
     document.querySelectorAll('[data-back]').forEach(c=> c.addEventListener('click', ()=> goBack()));
     document.getElementById('journal-back').addEventListener('click', ()=> goBack());
     document.getElementById('mind-back').addEventListener('click', ()=> goBack());
+    document.getElementById('stoic-back').addEventListener('click', ()=> goBack());
     document.getElementById('apikey-back').addEventListener('click', ()=> goBack());
     document.getElementById('capture-close').addEventListener('click', ()=> goBack());
     document.getElementById('capture-home').addEventListener('click', goHome);
 
     // ── Gestures (swipe + long-press), ported from Still ──
     const SWIPE_MIN=50, SWIPE_RATIO=1.4, SWIPE_MAX_TIME=600;
-    // up=Capture(from bottom)  down=Journal(from top)  left=Stoic(from right)  right=Mind(from left)
-    const HOME_NAV={ up:['capture','bottom'], down:['journal','top'], left:['stoic','right'], right:['mind','left'] };
+    // Drawer model: each screen lives at its labeled edge. Swipe it open (it
+    // slides in from that edge) or tap the edge zone.
+    //   up→Capture(from bottom)  down→Journal(from top)
+    //   left→Mind(from right)    right→Stoic(from left)   ← Stoic/Mind swapped
+    const HOME_NAV={ up:['capture','bottom'], down:['journal','top'], left:['mind','right'], right:['stoic','left'] };
+    // Edge tap-zones follow the labels: tap the edge → open the screen shown there.
+    const ZONE_NAV={ top:['journal','top'], bottom:['capture','bottom'], left:['stoic','left'], right:['mind','right'] };
     let touchStart=null;
     function onTouchStart(e){ if(transitioning) return; const t=e.touches?e.touches[0]:e; touchStart={x:t.clientX,y:t.clientY,time:Date.now()}; }
     function onTouchEnd(e){
@@ -590,8 +599,8 @@
       // Reverse-of-entry back gestures for the four primary surfaces.
       if(c==='capture' && dir==='down'){ goBack('down'); return; }
       if(c==='journal' && dir==='up'){ goBack('up'); return; }
-      if(c==='stoic' && dir==='right'){ goBack('right'); return; }
-      if(c==='mind' && dir==='left'){ goBack('left'); return; }
+      if(c==='stoic' && dir==='left'){ goBack('left'); return; }
+      if(c==='mind' && dir==='right'){ goBack('right'); return; }
     }
     document.addEventListener('touchstart', onTouchStart, {passive:true});
     document.addEventListener('touchend', onTouchEnd, {passive:true});
@@ -611,7 +620,7 @@
     // Edge zones — click/tap equivalent of the home swipe nav (works on laptops).
     document.querySelectorAll('.nav-zone').forEach(z=> z.addEventListener('click', ()=>{
       if(longPressFired) return;
-      const dest=HOME_NAV[z.dataset.dir]; if(dest) navigate(dest[0], dest[1]);
+      const dest=ZONE_NAV[z.dataset.edge]; if(dest) navigate(dest[0], dest[1]);
     }));
 
     function bumpLpHint(){ const n=(+localStorage.getItem('ink_lp_hint_count')||0)+1; localStorage.setItem('ink_lp_hint_count', n); }
@@ -659,10 +668,9 @@
           const blurb=await getIntentionBlurb(row);
           if(blurb){
             label.textContent='Morning Intention';
-            line.innerHTML=esc(blurb.line);
-            if(blurb.highlight){ hl.textContent='“'+blurb.highlight+'”'; hl.classList.remove('hidden'); }
+            line.innerHTML=esc(blurb.line);   // one-sentence summary — no truncated quote
             cta.classList.remove('hidden');
-            slot.onclick=()=>{ if(longPressFired) return; navigate('stoic','right'); };
+            slot.onclick=()=>{ if(longPressFired) return; navigate('stoic','left'); };
             return;
           }
         }
@@ -686,25 +694,27 @@
     }
 
     async function getIntentionBlurb(row){
-      const cacheKey='ink_morning_blurb_'+today();
+      // v2 cache key — old entries stored a question-style line; force a refresh.
+      const cacheKey='ink_morning_blurb_v2_'+today();
       let blurb=null; try{ blurb=JSON.parse(localStorage.getItem(cacheKey)||'null'); }catch{}
       if(blurb && blurb.reflection_id===row.id) return blurb;
       if(!getApiKey()){
         // Graceful no-key fallback (no nav interruption from a passive home surface).
-        return { reflection_id:row.id, intention:'', highlight:(row.text||'').slice(0,90), line:'You set a morning intention today. How has it shown up?' };
+        return { reflection_id:row.id, line:'You set a Stoic morning intention today. How is that going?' };
       }
       try{
         const r=await callClaude(
-          'A user wrote their Stoic morning intention earlier today (Q/A pairs). Return JSON: '+
-          '{ "intention":"<short lowercase phrase naming the trait/virtue/goal>", '+
-          '"highlight":"<a short near-verbatim pull from what they wrote, <=14 words, no quotes>", '+
-          '"line":"<one second-person retrospective question referencing their specific intention, e.g. \\"How has temperance shown up today?\\", <=20 words, no preamble>" }. '+
+          'A user wrote their Stoic morning intention earlier today (Q/A pairs). '+
+          'Identify the single virtue, value, trait, or goal they chose to act on today. '+
+          'Return JSON: { "line":"<exactly ONE warm second-person sentence in this shape: '+
+          '`<Their value, capitalized> was the Stoic value you planned to act on today. How is that going?` '+
+          'Substitute their actual value/goal; keep it to that one sentence; no preamble, no surrounding quotes>" }. '+
           'Entry:\n\n'+(row.text||'').slice(0,1500));
         if(!r||!r.line) return null;
-        const blurb2={ reflection_id:row.id, intention:r.intention||'', highlight:r.highlight||'', line:r.line };
+        const blurb2={ reflection_id:row.id, line:r.line };
         localStorage.setItem(cacheKey, JSON.stringify(blurb2));
         return blurb2;
-      }catch{ return { reflection_id:row.id, intention:'', highlight:(row.text||'').slice(0,90), line:'You set a morning intention today. How has it shown up?' }; }
+      }catch{ return { reflection_id:row.id, line:'You set a Stoic morning intention today. How is that going?' }; }
     }
 
     // ════ CAPTURE ════
