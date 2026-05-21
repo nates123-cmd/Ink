@@ -1195,6 +1195,22 @@
     renderHome();
     refreshContentSlot();
     maybeHideLpHint();
+
+    // Deeplink support: `?screen=<id>` navigates to that screen on load. For
+    // stoic, `&stoic=<morning|evening|premeditatio>` pre-selects the practice
+    // type. Used by Today's morning grounding tiles.
+    {
+      const params = new URLSearchParams(location.search);
+      const target = params.get('screen');
+      if (target) {
+        if (target === 'stoic') {
+          const t = params.get('stoic');
+          if (t === 'morning' || t === 'evening' || t === 'premeditatio') stoicType = t;
+        }
+        navigate(target);
+      }
+    }
+
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
       navigator.serviceWorker.register('./sw.js').catch(()=>{});
     }
