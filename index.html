@@ -268,8 +268,10 @@
     <div class="nav-zone zone-left" data-edge="left" aria-label="Stoic"></div>
     <div class="nav-zone zone-right" data-edge="right" aria-label="Mind"></div>
     <div class="edge-label edge-top">JOURNAL ▼</div>
-    <div class="edge-label edge-left">◀ STOIC</div>
-    <div class="edge-label edge-right">MIND ▶</div>
+    <!-- Arrows are ▲ in source so that after the CSS rotate(±90deg) on
+         .edge-left / .edge-right they visually point left and right. -->
+    <div class="edge-label edge-left">▲ STOIC</div>
+    <div class="edge-label edge-right">MIND ▲</div>
     <div class="edge-label edge-bottom">CAPTURE ▲</div>
     <div class="canvas-center">
       <div class="day-of-week" id="home-dow">—</div>
