@@ -55,6 +55,12 @@ Every write creates one `entries` row + one or more type-specific records (`day_
 
 - Long-press home canvas → Journal screen with filter chips (`All / Days / Restaurants / Media / Thoughts / Reflections`)
 
+## Deeplinks
+
+Boot-time URL parser recognizes `?screen=<id>` and, for stoic,
+`&stoic=<morning|evening|premeditatio>`. Used by Today's morning
+grounding tiles. Spec section: "Deeplinks" under `## Screens`.
+
 ## Don't do
 
 - Don't migrate Still's data destructively — the Still PWA stays accessible at its existing URL.

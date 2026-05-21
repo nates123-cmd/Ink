@@ -298,6 +298,26 @@ create index idx_entries_composed on entries(composed_at desc);
 | `prompt-library` | Settings / overflow | Browse / pin / delete saved Stoic prompts (carryover) |
 | `pattern` | Settings / overflow | Claude pattern analysis across recent entries (carryover, expanded to read across all new tables) |
 
+### Deeplinks
+
+Ink accepts URL search params at boot to land on a screen directly.
+Used by Today's morning grounding tiles to jump into Stoic with a
+specific practice type already selected.
+
+| Param | Values | Effect |
+|---|---|---|
+| `screen` | any screen ID from the table above | Calls `navigate(<id>)` after the home boot, putting that screen on top of the stack. Back returns to home. |
+| `stoic` | `morning` \| `evening` \| `premeditatio` | When `screen=stoic`, pre-sets `stoicType` so the right practice tab is active when `initStoic()` runs. |
+
+Examples:
+- `https://nates123-cmd.github.io/Ink/?screen=stoic&stoic=morning` → Stoic / Morning Intention
+- `https://nates123-cmd.github.io/Ink/?screen=stoic&stoic=premeditatio` → Stoic / Premeditatio Malorum
+
+PWA caveat: if Ink is already running in the background, iOS may
+foreground it without re-executing the boot script, in which case the
+URL params get ignored. Force-quitting Ink and retapping the deeplink
+always works.
+
 ---
 
 ## Home screen
