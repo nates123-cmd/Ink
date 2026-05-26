@@ -63,9 +63,11 @@ Top→bottom: (1) habit pill strip (toggles `habit_logs`); (2) today's day-log e
 
 Tabs **Thoughts · Insights · Mantras**. Each lists `status='active'` rows newest-first; a Dismissed toggle reveals `status='dismissed'`.
 
-- **Thoughts** row: → Insight · → Mantra · Push to Course · Dismiss · Delete (Resurface if dismissed)
-- **Insights** row: → Mantra · Push to Course · Dismiss · Delete
-- **Mantras** row: Push to Course · Dismiss · Delete
+- **Thoughts** row: Edit · → Insight · → Mantra · Push to Course · Dismiss · Delete (Resurface if dismissed)
+- **Insights** row: Edit · → Mantra · Push to Course · Dismiss · Delete
+- **Mantras** row: Edit · Push to Course · Dismiss · Delete
+
+**Edit (added 2026-05-26).** Every Mind row supports in-place edit of its `text`. Two equivalent entry points: (a) the **Edit** action button at the head of the action row, and (b) **tap the row text itself** (`mind-text`) — follows the suite convention that "Today/list rows default to edit-form, not view-then-edit" ([[feedback_today_logs_editable]]). Both open a modal with a textarea pre-filled with the current text; Save → `PATCH <table>?id=eq.<id> { text }`. No schema change. Editing is allowed in both `active` and `dismissed` states; editing a dismissed row keeps it dismissed.
 
 **Move = move, not copy.** Promote = insert into the target table carrying `text` + `source_entry_id`, then delete the source row — a promoted thought leaves Thoughts and appears under Insights, etc. The shared `mantras` (feeds home + Break) and Still's `insights` stay the system of record so existing integrations keep working. Promote opens a one-field confirm allowing a light text edit before the move. **Dismiss** → `status='dismissed'` (reversible). **Resurface** → `status='active'`. **Delete** → row removed (single confirm).
 
@@ -651,6 +653,43 @@ Four defects observed in live Still use. Decision: **do not patch deprecated Sti
 
 **Ink requirement:** persist and display it. Blurb cache shape becomes `{ reflection_id, intention, highlight, line }` where `highlight` is a short verbatim-ish pull from the entry. Surfaced on home (under the check-in line, F2) and on the Reflections row layout in Journal (the italic note slot already exists in the journal mock — reuse it).
 
+### F5 — Dark mode (opt-in) — 2026-05-26
+
+**Amends F1.** F1 banned *runtime* theme swaps because Still flipped to dark on a clock and the static manifest couldn't follow, so iOS standalone showed a paper-colored band beneath a dark canvas every evening. The ban on **clock-based** swaps and on **silently following `prefers-color-scheme`** without user awareness stands. An **explicit user-controlled Theme setting** is permitted, with the iOS manifest-strip tradeoff documented and accepted.
+
+**Setting.** Settings → **Theme**: `Auto` / `Light` / `Dark`. Default `Auto` (follows `prefers-color-scheme`). Persisted in `localStorage['ink_theme']` (values `auto|light|dark`). Applied by toggling `html.dark` class. Applied on boot **before** first paint to avoid flash — inline `<script>` near the top of `<head>` reads the setting and toggles the class before stylesheets resolve component colors.
+
+**JS theme-color rule.** `<meta name="theme-color">` IS rewritten on theme apply (status-bar color is allowed to follow). Manifest `background_color` / `theme_color` are **not** rewritten — they stay paper. Known iOS PWA tradeoff: in dark mode the safe-area-inset-bottom strip on iOS standalone remains paper-colored against a dark canvas. The user has opted into dark mode; the strip mismatch is the accepted cost.
+
+**Dark palette tokens** (override under `html.dark`):
+
+```css
+html.dark {
+  --bg:           #1A1714;   /* dark walnut */
+  --bg-deep:      #221E1A;
+  --text:         #E8DFC8;   /* warm parchment, inverted ink */
+  --text-soft:    #C9BFA6;
+  --muted:        #998C72;
+  --hint:         #7E725A;
+  --whisper:      #6E6450;
+  --accent:       #8A95C2;   /* lifted faded-indigo for AA contrast */
+  --accent-soft:  #6D78A6;
+  --accent-faint: #2C3045;
+  --card-bg:      #2A2520;
+  --border:       #3A332A;
+  --hairline:     #2D2820;
+}
+```
+
+Light tokens stay in `:root`; dark tokens override under `html.dark`. Same token names, same component rules — no per-component dark variants. Anything that looks wrong in dark is a token bug, fixed by editing the dark block above, not by introducing dark-only component CSS.
+
+**Boot order.**
+1. Read `localStorage['ink_theme']` (default `auto`).
+2. Resolve effective theme: `auto` → `window.matchMedia('(prefers-color-scheme: dark)').matches`.
+3. Toggle `html.dark` accordingly.
+4. Rewrite `<meta name="theme-color">` to the resolved `--bg` (read via `getComputedStyle`).
+5. If `auto`, subscribe to `matchMedia` changes and re-apply on flip.
+
 ---
 
 ## Captured fixes & ideas (2026-05-18)
@@ -764,4 +803,4 @@ Same design grammar as the rest of the suite: single column, generous gutters, b
 
 ---
 
-*Last updated: May 18, 2026 — Navigation & Mind redesign shipped live (`ink-v3`). Drafted in conversation with Claude. Successor to Still — replaces Still entirely.*
+*Last updated: May 26, 2026 — Added F5 (opt-in dark mode) and Mind row Edit action. Successor to Still — replaces Still entirely.*
