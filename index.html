@@ -1298,6 +1298,18 @@
           if (t === 'morning' || t === 'evening' || t === 'premeditatio') stoicType = t;
         }
         navigate(target);
+        // Inbound capture handoff (e.g. "Reflect on it in Ink" from Break):
+        // prefill the compose box with the passed text. Runs after navigate(),
+        // so it lands after onEnter -> resetCapture() has cleared the field.
+        if (target === 'capture') {
+          const text = params.get('text');
+          if (text) {
+            const box = document.getElementById('capture-text');
+            box.value = text;
+            updateCaptureCount();
+            box.focus();
+          }
+        }
       }
     }
 
