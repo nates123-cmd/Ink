@@ -77,6 +77,14 @@
       color: var(--text);
       font-family: var(--sans);
       -webkit-font-smoothing: antialiased;
+      /* Chrome shouldn't be selectable — tapping/long-pressing buttons, labels,
+         and timeline rows used to drag a blue text-selection across the whole UI. */
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* Opt selection back in only where the user's own words live. */
+    input, textarea, .entry-prose, .entry-note, .entry-thought, .entry-headline, .entry-meta {
+      -webkit-user-select: text; user-select: text;
     }
 
     /* ── Screen system ── */
