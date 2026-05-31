@@ -623,14 +623,28 @@
         _=>{ cb&&cb(null); }, {maximumAge:6*3600000, timeout:8000});
     }
     // Solar resolution → {dark, next} (next = ms until the next sun event, or null). null overall if no location.
+    // sunTimes() returns the correct time-of-day but anchored to the input's UTC date; at western longitudes
+    // the real instant can land on the adjacent UTC day. So gather events for yesterday/today/tomorrow and
+    // reason from the actual instants nearest `now` rather than trusting a single day's pair.
     function resolveSolar(){
       const g=getGeo(); if(!g) return null;
-      const now=new Date(), st=sunTimes(now,g.lat,g.lng);
-      if(!st.sunrise||!st.sunset) return { dark:osDark(), next:null }; // polar day/night → follow OS
-      if(now<st.sunrise) return { dark:true, next:st.sunrise-now };
-      if(now<st.sunset)  return { dark:false, next:st.sunset-now };
-      const tm=sunTimes(new Date(now.getTime()+86400000),g.lat,g.lng); // after sunset → next is tomorrow's sunrise
-      return { dark:true, next: tm.sunrise ? tm.sunrise-now : null };
+      const now=new Date(), sunrises=[], sunsets=[];
+      for(const off of [-1,0,1]){
+        const st=sunTimes(new Date(now.getTime()+off*86400000), g.lat, g.lng);
+        if(st.sunrise) sunrises.push(st.sunrise);
+        if(st.sunset)  sunsets.push(st.sunset);
+      }
+      if(!sunrises.length || !sunsets.length) return { dark:osDark(), next:null }; // polar day/night → follow OS
+      const lastBefore=arr=>arr.filter(t=>t<=now).sort((a,b)=>b-a)[0]||null;
+      const firstAfter =arr=>arr.filter(t=>t> now).sort((a,b)=>a-b)[0]||null;
+      const lastSunrise=lastBefore(sunrises), lastSunset=lastBefore(sunsets);
+      // Dark if the most recent sun event was a sunset (or the sun hasn't risen yet today).
+      let dark;
+      if(!lastSunrise) dark=true;
+      else if(!lastSunset) dark=false;
+      else dark = lastSunset > lastSunrise;
+      const next=[firstAfter(sunrises), firstAfter(sunsets)].filter(Boolean).sort((a,b)=>a-b)[0];
+      return { dark, next: next ? next-now : null };
     }
     function resolveDark(t){
       if(t==='dark') return true;
