@@ -20,7 +20,11 @@
     // (no flash). theme-color meta is rewritten on apply; manifest stays paper.
     (function(){
       var t = localStorage.getItem('ink_theme') || 'auto';
-      var dark = t === 'dark' || (t === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      var dark;
+      if (t === 'dark') dark = true;
+      else if (t === 'light') dark = false;
+      else if (t === 'solar') dark = localStorage.getItem('ink_solar_dark') === '1'; // last-known; main script recomputes
+      else dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
       if (dark) document.documentElement.classList.add('dark');
     })();
   </script>
@@ -426,6 +430,7 @@
           <button type="button" class="theme-btn" data-th="auto">Auto</button>
           <button type="button" class="theme-btn" data-th="light">Light</button>
           <button type="button" class="theme-btn" data-th="dark">Dark</button>
+          <button type="button" class="theme-btn" data-th="solar">Solar</button>
         </div>
       </div>
       <button class="btn btn-primary" id="apikey-save" style="width:100%">Save</button>
@@ -575,22 +580,82 @@
     function getOuraPat(){ return localStorage.getItem('still_oura_pat') || ''; }
 
     // ── Theme (F5) ──
-    function getTheme(){ const t=localStorage.getItem('ink_theme'); return (t==='light'||t==='dark'||t==='auto')?t:'auto'; }
-    function resolveDark(t){ return t==='dark' || (t==='auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches); }
+    function getTheme(){ const t=localStorage.getItem('ink_theme'); return (t==='light'||t==='dark'||t==='auto'||t==='solar')?t:'auto'; }
+    function osDark(){ return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches); }
+
+    // Sunrise/sunset (NOAA approximation, pure JS, no network). Returns Date (UTC) or null at poles.
+    function sunTimes(date, lat, lng){
+      const Z=90.833, D=Math.PI/180, R=180/Math.PI;
+      const Y=date.getUTCFullYear(), Mo=date.getUTCMonth(), Da=date.getUTCDate();
+      const N=Math.floor((Date.UTC(Y,Mo,Da)-Date.UTC(Y,0,0))/86400000);
+      function calc(rise){
+        const lngH=lng/15, t=N+((rise?6:18)-lngH)/24;
+        const M=(0.9856*t)-3.289;
+        let L=(M+1.916*Math.sin(M*D)+0.020*Math.sin(2*M*D)+282.634+360)%360;
+        let RA=(R*Math.atan(0.91764*Math.tan(L*D))+360)%360;
+        RA+=(Math.floor(L/90)*90 - Math.floor(RA/90)*90); RA/=15;
+        const sinDec=0.39782*Math.sin(L*D), cosDec=Math.cos(Math.asin(sinDec));
+        const cosH=(Math.cos(Z*D)-sinDec*Math.sin(lat*D))/(cosDec*Math.cos(lat*D));
+        if(cosH>1||cosH<-1) return null; // sun never rises / never sets
+        let H=(rise?360-R*Math.acos(cosH):R*Math.acos(cosH))/15;
+        let UT=((H+RA-0.06571*t-6.622)-lngH)%24; UT=(UT+24)%24;
+        return new Date(Date.UTC(Y,Mo,Da)+UT*3600000);
+      }
+      return { sunrise:calc(true), sunset:calc(false) };
+    }
+    function getGeo(){ try{ return JSON.parse(localStorage.getItem('ink_geo')||'null'); }catch(_){ return null; } }
+    function requestGeo(cb){
+      if(!navigator.geolocation){ cb&&cb(null); return; }
+      navigator.geolocation.getCurrentPosition(
+        p=>{ const g={lat:p.coords.latitude,lng:p.coords.longitude}; localStorage.setItem('ink_geo',JSON.stringify(g)); cb&&cb(g); },
+        _=>{ cb&&cb(null); }, {maximumAge:6*3600000, timeout:8000});
+    }
+    // Solar resolution → {dark, next} (next = ms until the next sun event, or null). null overall if no location.
+    function resolveSolar(){
+      const g=getGeo(); if(!g) return null;
+      const now=new Date(), st=sunTimes(now,g.lat,g.lng);
+      if(!st.sunrise||!st.sunset) return { dark:osDark(), next:null }; // polar day/night → follow OS
+      if(now<st.sunrise) return { dark:true, next:st.sunrise-now };
+      if(now<st.sunset)  return { dark:false, next:st.sunset-now };
+      const tm=sunTimes(new Date(now.getTime()+86400000),g.lat,g.lng); // after sunset → next is tomorrow's sunrise
+      return { dark:true, next: tm.sunrise ? tm.sunrise-now : null };
+    }
+    function resolveDark(t){
+      if(t==='dark') return true;
+      if(t==='light') return false;
+      if(t==='solar'){ const s=resolveSolar(); return s?s.dark:osDark(); }
+      return t==='auto' && osDark();
+    }
+    let _solarTimer=null;
+    function scheduleSolar(){
+      if(_solarTimer){ clearTimeout(_solarTimer); _solarTimer=null; }
+      if(getTheme()!=='solar') return;
+      const s=resolveSolar();
+      // Re-apply at the next sun event; cap at 6h so we re-check (and dodge setTimeout drift/overflow).
+      if(s&&s.next!=null) _solarTimer=setTimeout(applyTheme, Math.min(s.next+1000, 6*3600000));
+    }
     function applyTheme(){
       const t=getTheme(); const dark=resolveDark(t);
+      if(t==='solar') localStorage.setItem('ink_solar_dark', dark?'1':'0'); // pre-paint reads this next boot
       document.documentElement.classList.toggle('dark', dark);
       // F5: theme-color follows --bg; manifest stays paper (iOS strip tradeoff accepted).
       const bg=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
       const m=document.querySelector('meta[name="theme-color"]'); if(m&&bg) m.setAttribute('content', bg);
+      scheduleSolar();
     }
-    function setTheme(t){ localStorage.setItem('ink_theme', t); applyTheme(); }
-    // Re-resolve on system flip while in Auto.
+    function setTheme(t){
+      localStorage.setItem('ink_theme', t);
+      if(t==='solar' && !getGeo()) requestGeo(()=>applyTheme()); // prompt for location on first Solar pick
+      applyTheme();
+    }
+    // Re-resolve on system flip (Auto, or Solar's polar fallback).
     if (window.matchMedia){
       const mq=window.matchMedia('(prefers-color-scheme: dark)');
-      const onFlip=()=>{ if(getTheme()==='auto') applyTheme(); };
+      const onFlip=()=>{ const t=getTheme(); if(t==='auto'||t==='solar') applyTheme(); };
       mq.addEventListener ? mq.addEventListener('change', onFlip) : mq.addListener(onFlip);
     }
+    // Recheck Solar on foreground (timers are throttled while backgrounded).
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && getTheme()==='solar') applyTheme(); });
     function initThemeRow(){
       const cur=getTheme();
       document.querySelectorAll('#theme-row .theme-btn').forEach(b=>{
