@@ -1,5 +1,5 @@
 // Ink service worker — bump CACHE_NAME on every deploy.
-const CACHE_NAME = 'ink-v12';
+const CACHE_NAME = 'ink-v13';
 const STATIC = ['./', './index.html', './manifest.json', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {

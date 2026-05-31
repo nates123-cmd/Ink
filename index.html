@@ -265,7 +265,7 @@
     .theme-btn { flex: 1; padding: 10px 8px; border-radius: 10px; border: .5px solid var(--border); background: transparent; color: var(--muted); font-size: 13px; cursor: pointer; font-family: var(--sans); }
     .theme-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
     .stoic-prompt-item { background: var(--card-bg); border: .5px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
-    .stoic-prompt-q { font-family: var(--serif); font-size: 14.5px; color: var(--text); line-height: 1.5; }
+    .stoic-prompt-q { font-family: var(--serif); font-size: 14.5px; color: var(--text); line-height: 1.5; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
     .stoic-prompt-dots { font-size: 11px; color: var(--whisper); margin-top: 8px; letter-spacing: 2px; }
     .stoic-a { width: 100%; margin-top: 10px; min-height: 60px; padding: 10px 12px; border: .5px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); font-family: var(--serif); font-size: 14px; line-height: 1.55; outline: none; resize: vertical; }
     .stoic-a:focus { border-color: var(--accent-soft); }
@@ -1394,9 +1394,13 @@
       // Long-press only on the question text — not the whole card — so typing
       // in the answer box can't trip a regenerate.
       document.querySelectorAll('#stoic-prompts .stoic-prompt-q').forEach(qel=>{
-        const idx=+qel.closest('.stoic-prompt-item').dataset.idx; let tmr=null;
-        qel.addEventListener('pointerdown', ()=>{ tmr=setTimeout(()=> regenStoicPrompt(idx), 500); });
-        ['pointerup','pointerleave','pointercancel','pointermove'].forEach(ev=> qel.addEventListener(ev, ()=> clearTimeout(tmr)));
+        const idx=+qel.closest('.stoic-prompt-item').dataset.idx; let tmr=null, sx=0, sy=0;
+        const cancel=()=>{ clearTimeout(tmr); tmr=null; };
+        qel.addEventListener('pointerdown', e=>{ sx=e.clientX; sy=e.clientY; clearTimeout(tmr); tmr=setTimeout(()=>{ tmr=null; regenStoicPrompt(idx); }, 500); });
+        // Only abort the hold if the finger actually drags (>10px) — touch jitter
+        // used to fire pointermove and cancel the timer before it could elapse.
+        qel.addEventListener('pointermove', e=>{ if(tmr && (Math.abs(e.clientX-sx)>10 || Math.abs(e.clientY-sy)>10)) cancel(); });
+        ['pointerup','pointerleave','pointercancel'].forEach(ev=> qel.addEventListener(ev, cancel));
       });
     }
     async function regenStoicPrompt(idx){
