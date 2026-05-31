@@ -1,5 +1,5 @@
 // Ink service worker — bump CACHE_NAME on every deploy.
-const CACHE_NAME = 'ink-v11';
+const CACHE_NAME = 'ink-v12';
 const STATIC = ['./', './index.html', './manifest.json', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -21,11 +21,12 @@ self.addEventListener('fetch', e => {
   // Bypass entirely on localhost so local dev always hits fresh files.
   if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return;
 
-  // Network-first for Anthropic + Supabase (never serve stale API data).
-  if (url.hostname.endsWith('anthropic.com') || url.hostname.endsWith('supabase.co')) {
-    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-    return;
-  }
+  // Bypass the SW for Anthropic + Supabase: let the browser fetch them
+  // directly. The old network-first-with-cache-fallback branch cached
+  // nothing, so on failure caches.match missed and respondWith(undefined)
+  // threw "returned response is null". Bypassing lets offline write failures
+  // reject natively into the app's outbox (sbFetch queues them).
+  if (url.hostname.endsWith('anthropic.com') || url.hostname.endsWith('supabase.co')) return;
 
   // Cache-first for everything else (static shell).
   e.respondWith(
