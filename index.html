@@ -284,6 +284,9 @@
 
     .toast { position: fixed; bottom: calc(40px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(20px); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: 13px; opacity: 0; pointer-events: none; transition: all .25s ease; z-index: 60; max-width: 90%; text-align: center; }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .sync-badge { position: fixed; top: calc(8px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%) translateY(-20px); background: var(--accent); color: var(--bg); padding: 5px 12px; border-radius: 999px; font-size: 11px; opacity: 0; pointer-events: none; transition: all .25s ease; z-index: 61; }
+    .sync-badge.show { opacity: .95; transform: translateX(-50%) translateY(0); }
+    .sync-badge.offline { background: var(--muted); }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -475,6 +478,7 @@
 
   <div class="modal-overlay" id="modal-overlay"><div class="sheet" id="modal-sheet"></div></div>
   <div class="toast" id="toast"></div>
+  <div class="sync-badge" id="sync-badge"></div>
 
   <script>
     // ── Constants (same Supabase project as Still / Break / Tide) ──
@@ -674,18 +678,116 @@
       return false;
     }
 
-    // ── Supabase ──
+    // ── Supabase + offline outbox ──
+    // Capture-first offline: writes made while offline are queued to
+    // localStorage and replayed (in order) when the connection returns, so a
+    // capture is never lost on the subway. Reads still require network.
+    const OUTBOX_KEY = 'ink_outbox';
+    const WRITE_METHODS = { POST:1, PATCH:1, PUT:1, DELETE:1 };
+    let flushing = false, flushDropped = 0;
+
+    function outboxGet(){ try{ return JSON.parse(localStorage.getItem(OUTBOX_KEY)) || []; }catch{ return []; } }
+    function outboxSet(a){ try{ localStorage.setItem(OUTBOX_KEY, JSON.stringify(a)); }catch{} }
+    function pendingCount(){ return outboxGet().length; }
+    function newLocalId(){
+      try{ return crypto.randomUUID(); }
+      catch{ return 'local-'+Date.now()+'-'+Math.round(Math.random()*1e9); }
+    }
+    function updateSyncBadge(){
+      const el=document.getElementById('sync-badge'); if(!el) return;
+      const n=pendingCount();
+      if (n<1){ el.className='sync-badge'; return; }
+      if (navigator.onLine){ el.textContent=n+' syncing…'; el.className='sync-badge show'; }
+      else { el.textContent=n+' to sync · offline'; el.className='sync-badge show offline'; }
+    }
+
+    // Queue a write and hand the caller an optimistic result. For parent rows
+    // that callers chain on (Prefer: return=representation), mint a client UUID
+    // and echo it back so the child write can reference the id immediately; the
+    // same id replays to the server later, preserving the source_entry_id link.
+    function queueWrite(path, opts, method){
+      let optimistic = null, queuedOpts = opts;
+      if (method === 'POST' && /return=representation/.test(opts.prefer||'')){
+        let bodyObj = {}; try{ bodyObj = JSON.parse(opts.body||'{}'); }catch{}
+        if (!bodyObj.id) bodyObj.id = newLocalId();
+        queuedOpts = { ...opts, body: JSON.stringify(bodyObj) };
+        optimistic = [bodyObj];
+      }
+      const ob = outboxGet();
+      const op = { path, method, body: queuedOpts.body || null, prefer: queuedOpts.prefer || null, ts: Date.now() };
+      // Collapse repeated autosaves: a PATCH supersedes a trailing PATCH of the
+      // same row, so debounced typing doesn't bloat the queue with stale bodies.
+      const last = ob[ob.length-1];
+      let collapsed = false;
+      if (method === 'PATCH' && last && last.method === 'PATCH' && last.path === path){ ob[ob.length-1] = op; collapsed = true; }
+      else ob.push(op);
+      outboxSet(ob);
+      updateSyncBadge();
+      if (!collapsed) showToast('Saved offline — will sync');
+      return optimistic; // null for non-representation writes (callers ignore it)
+    }
+
     async function sbFetch(path, opts={}){
-      const _bearer = await sbBearer();
-      const res = await fetch(SB_URL+'/rest/v1/'+path, {
-        method: opts.method || 'GET',
-        headers: { 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':'Bearer '+_bearer, ...(opts.prefer?{'Prefer':opts.prefer}:{}) },
-        body: opts.body || undefined,
-      });
+      const method = (opts.method || 'GET').toUpperCase();
+      const isWrite = !!WRITE_METHODS[method];
+
+      // Known-offline: queue writes immediately (skip a doomed fetch); reads fail.
+      if (isWrite && navigator.onLine === false) return queueWrite(path, opts, method);
+
+      let res;
+      try{
+        const _bearer = await sbBearer();
+        res = await fetch(SB_URL+'/rest/v1/'+path, {
+          method,
+          headers: { 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':'Bearer '+_bearer, ...(opts.prefer?{'Prefer':opts.prefer}:{}) },
+          body: opts.body || undefined,
+        });
+      }catch(netErr){
+        // Network failure mid-flight: queue writes, rethrow reads.
+        if (isWrite) return queueWrite(path, opts, method);
+        throw netErr;
+      }
       if (!res.ok && res.status !== 404){ const t=await res.text().catch(()=> ''); throw new Error('SB '+res.status+': '+t); }
-      if (res.status === 204) return null;
-      const text = await res.text();
-      return text ? JSON.parse(text) : null;
+      const out = res.status === 204 ? null : await res.text().then(t=> t ? JSON.parse(t) : null);
+      // A successful online write is a good moment to drain any backlog.
+      if (isWrite && pendingCount()) flushOutbox();
+      return out;
+    }
+
+    // Replay the outbox FIFO. Stop on the first network failure (keeps order and
+    // parent→child dependencies intact); drop ops the server permanently rejects
+    // (e.g. a 409 because the row already synced) so one bad op can't wedge the queue.
+    async function flushOutbox(){
+      if (flushing || !navigator.onLine) return;
+      let ob = outboxGet();
+      if (!ob.length){ updateSyncBadge(); return; }
+      flushing = true; flushDropped = 0;
+      try{
+        while (ob.length){
+          const op = ob[0];
+          let res;
+          try{
+            const _bearer = await sbBearer();
+            res = await fetch(SB_URL+'/rest/v1/'+op.path, {
+              method: op.method,
+              headers: { 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':'Bearer '+_bearer, ...(op.prefer?{'Prefer':op.prefer}:{}) },
+              body: op.body || undefined,
+            });
+          }catch{ break; } // back offline — stop, keep the queue for next time
+          if (!res.ok && res.status !== 404 && res.status !== 409) flushDropped++;
+          ob.shift(); outboxSet(ob);
+        }
+      }finally{
+        flushing = false; updateSyncBadge();
+        if (!pendingCount() && flushDropped===0) { if (typeof refreshAfterSync==='function') refreshAfterSync(); }
+        if (flushDropped) showToast(flushDropped+' offline change'+(flushDropped>1?'s':'')+' could not sync');
+      }
+    }
+
+    // Re-pull the surfaces a sync may have changed, if the user is looking at them.
+    function refreshAfterSync(){
+      const active=document.querySelector('.screen.active');
+      if (active && active.id==='screen-journal') { try{ openJournal(); }catch{} }
     }
 
     // ── Claude ── (throws a clear error when no key; callers surface e.message — F3)
@@ -1454,6 +1556,12 @@
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
       navigator.serviceWorker.register('./sw.js').catch(()=>{});
     }
+
+    // Offline outbox: reflect state now, drain when the connection returns.
+    window.addEventListener('online', ()=>{ updateSyncBadge(); flushOutbox(); });
+    window.addEventListener('offline', updateSyncBadge);
+    updateSyncBadge();
+    if (navigator.onLine && hasSession()) flushOutbox();
   </script>
 </body>
 </html>
