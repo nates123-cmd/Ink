@@ -622,19 +622,31 @@
         p=>{ const g={lat:p.coords.latitude,lng:p.coords.longitude}; localStorage.setItem('ink_geo',JSON.stringify(g)); cb&&cb(g); },
         _=>{ cb&&cb(null); }, {maximumAge:6*3600000, timeout:8000});
     }
-    // Solar resolution → {dark, next} (next = ms until the next sun event, or null). null overall if no location.
+    // Fallback when we have no coordinates (location denied/unavailable, or polar day/night):
+    // decide by LOCAL clock — dark before 7am or from 7pm. Crucially NOT osDark(), so Solar still
+    // tracks day/night even with no geo instead of silently mirroring the OS theme.
+    function clockFallback(){
+      const now=new Date(), h=now.getHours();
+      const dark = h<7 || h>=19;
+      const nx=new Date(now);
+      if(h<7) nx.setHours(7,0,0,0);
+      else if(h<19) nx.setHours(19,0,0,0);
+      else { nx.setDate(nx.getDate()+1); nx.setHours(7,0,0,0); }
+      return { dark, next: nx-now };
+    }
+    // Solar resolution → {dark, next} (next = ms until the next transition). Always returns an object.
     // sunTimes() returns the correct time-of-day but anchored to the input's UTC date; at western longitudes
     // the real instant can land on the adjacent UTC day. So gather events for yesterday/today/tomorrow and
     // reason from the actual instants nearest `now` rather than trusting a single day's pair.
     function resolveSolar(){
-      const g=getGeo(); if(!g) return null;
+      const g=getGeo(); if(!g) return clockFallback(); // no location → clock heuristic (geo requested separately)
       const now=new Date(), sunrises=[], sunsets=[];
       for(const off of [-1,0,1]){
         const st=sunTimes(new Date(now.getTime()+off*86400000), g.lat, g.lng);
         if(st.sunrise) sunrises.push(st.sunrise);
         if(st.sunset)  sunsets.push(st.sunset);
       }
-      if(!sunrises.length || !sunsets.length) return { dark:osDark(), next:null }; // polar day/night → follow OS
+      if(!sunrises.length || !sunsets.length) return clockFallback(); // polar day/night → clock heuristic
       const lastBefore=arr=>arr.filter(t=>t<=now).sort((a,b)=>b-a)[0]||null;
       const firstAfter =arr=>arr.filter(t=>t> now).sort((a,b)=>a-b)[0]||null;
       const lastSunrise=lastBefore(sunrises), lastSunset=lastBefore(sunsets);
@@ -649,8 +661,15 @@
     function resolveDark(t){
       if(t==='dark') return true;
       if(t==='light') return false;
-      if(t==='solar'){ const s=resolveSolar(); return s?s.dark:osDark(); }
+      if(t==='solar') return resolveSolar().dark;
       return t==='auto' && osDark();
+    }
+    // Request geolocation at most once per load when Solar is active but we have no coords yet,
+    // so a session that already had ink_theme=solar (and never re-picked it) still self-heals.
+    let _geoTried=false;
+    function ensureSolarGeo(){
+      if(_geoTried || getGeo() || getTheme()!=='solar') return;
+      _geoTried=true; requestGeo(()=>applyTheme());
     }
     let _solarTimer=null;
     function scheduleSolar(){
@@ -668,10 +687,11 @@
       const bg=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
       const m=document.querySelector('meta[name="theme-color"]'); if(m&&bg) m.setAttribute('content', bg);
       scheduleSolar();
+      if(t==='solar') ensureSolarGeo(); // upgrade clock fallback → real sun times once coords arrive
     }
     function setTheme(t){
       localStorage.setItem('ink_theme', t);
-      if(t==='solar' && !getGeo()) requestGeo(()=>applyTheme()); // prompt for location on first Solar pick
+      if(t==='solar') _geoTried=false; // re-pick → retry location even if previously denied
       applyTheme();
     }
     // Re-resolve on system flip (Auto, or Solar's polar fallback).
