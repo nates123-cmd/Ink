@@ -426,13 +426,9 @@
       <button class="icon-btn" id="apikey-back" aria-label="Back"><i class="ti ti-x"></i></button>
     </div>
     <div class="pad">
-      <p class="stub-note" id="apikey-msg">Ink needs an Anthropic API key for parsing and reflection prompts. Stored only in this browser.</p>
+      <p class="stub-note" id="apikey-msg">AI runs through your login — no API key to enter. Powered server-side.</p>
       <div class="field-block">
-        <label>Anthropic API key</label>
-        <input class="input" id="apikey-input" type="password" placeholder="sk-ant-…" />
-      </div>
-      <div class="field-block">
-        <label>Oura PAT (optional)</label>
+        <label>Oura PAT (optional, tied to your login)</label>
         <input class="input" id="oura-input" type="password" placeholder="Personal access token" />
       </div>
       <div class="field-block">
@@ -572,7 +568,7 @@
       codeEl.oninput=()=>{ codeEl.value=codeEl.value.replace(/\D/g,'').slice(0,8); };
       showScreen('otp');
     }
-    const MODEL  = 'claude-sonnet-4-7';
+    const MODEL  = 'claude-sonnet-4-6';
 
     const STOIC_PRACTICES = {
       morning: { label: 'Morning Intention', prompts: [
@@ -613,9 +609,33 @@
     function arr(x){ return Array.isArray(x) ? x : (x ? [x] : []); }
 
     // ── Settings ──
-    function getApiKey(){ return localStorage.getItem('anthropic_api_key') || ''; }
-    function setApiKey(k){ localStorage.setItem('anthropic_api_key', k.trim()); }
     function getOuraPat(){ return localStorage.getItem('still_oura_pat') || ''; }
+
+    // ── Login-tied settings ── mirror whitelisted keys to the user's
+    // per-user `user_settings` row so they follow the login across devices.
+    // localStorage stays the read path (offline mirror); cloud is source of
+    // truth on boot. user_id is filled server-side from the JWT (column default
+    // auth.uid() + RLS), so the body is just { key, value }.
+    const SYNCED_KEYS = ['still_oura_pat', 'ink_theme'];
+    async function _settingsHeaders(){ return { apikey:SB_KEY, Authorization:'Bearer '+(await sbBearer()), 'Content-Type':'application/json' }; }
+    async function syncSetting(key, value){
+      localStorage.setItem(key, value);
+      if (!hasSession()) return;
+      try{ await fetch(SB_URL+'/rest/v1/user_settings', { method:'POST', headers:{ ...(await _settingsHeaders()), Prefer:'resolution=merge-duplicates' }, body:JSON.stringify({ key, value }) }); }catch{}
+    }
+    async function loadCloudSettings(){
+      if (!hasSession()) return;
+      try{
+        const r=await fetch(SB_URL+'/rest/v1/user_settings?select=key,value', { headers:await _settingsHeaders() });
+        if (!r.ok) return;
+        const cloud={}; (await r.json()).forEach(x=> cloud[x.key]=x.value);
+        for (const k of SYNCED_KEYS){
+          if (cloud[k]!=null && cloud[k]!=='') localStorage.setItem(k, cloud[k]);
+          else if (localStorage.getItem(k)) syncSetting(k, localStorage.getItem(k)); // backfill local→cloud
+        }
+        if (typeof setTheme==='function') setTheme(localStorage.getItem('ink_theme')||'auto');
+      }catch{}
+    }
 
     // ── Theme (F5) ──
     function getTheme(){ const t=localStorage.getItem('ink_theme'); return (t==='light'||t==='dark'||t==='auto'||t==='solar')?t:'auto'; }
@@ -717,6 +737,7 @@
     }
     function setTheme(t){
       localStorage.setItem('ink_theme', t);
+      if (typeof syncSetting==='function' && hasSession()) syncSetting('ink_theme', t); // follow login
       if(t==='solar') _geoTried=false; // re-pick → retry location even if previously denied
       applyTheme();
     }
@@ -736,12 +757,11 @@
       });
     }
 
-    // F3: gate Claude actions on a key; route to settings with an explicit message.
+    // Gate Claude actions on a login (the proxy needs a JWT). Route to settings
+    // / sign-in with an explicit message when signed out.
     function requireApiKey(reason){
-      if (getApiKey()) return true;
-      document.getElementById('apikey-msg').textContent = reason || 'An Anthropic API key is required for this. Stored only in this browser.';
-      document.getElementById('apikey-input').value = '';
-      document.getElementById('oura-input').value = getOuraPat();
+      if (hasSession()) return true;
+      const msg=document.getElementById('apikey-msg'); if(msg) msg.textContent = reason || 'Sign in to use Ink AI.';
       navigate('apikey');
       return false;
     }
@@ -865,20 +885,20 @@
       if (active && active.id==='screen-journal') { try{ openJournal(); }catch{} }
     }
 
-    // ── Claude ── (throws a clear error when no key; callers surface e.message — F3)
+    // ── Claude ── routed through the JWT-gated `claude` edge proxy: the
+    // Anthropic key lives server-side, never in the browser. Requires a login.
     async function callClaude(userPrompt, maxTokens){
-      const key = getApiKey();
-      if (!key) throw new Error('No API key — add one in Settings');
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      if (!hasSession()) throw new Error('Sign in to use Ink AI');
+      const res = await fetch(SB_URL+'/functions/v1/claude', {
         method:'POST',
-        headers:{ 'x-api-key':key, 'anthropic-version':'2023-06-01', 'content-type':'application/json', 'anthropic-dangerous-direct-browser-access':'true' },
+        headers:{ 'content-type':'application/json', apikey:SB_KEY, Authorization:'Bearer '+(await sbBearer()) },
         body: JSON.stringify({ model:MODEL, max_tokens:maxTokens||1024,
           system:'You are a precise assistant. Return ONLY valid JSON — no markdown, no backticks, no prose.',
           messages:[{ role:'user', content:userPrompt }] }),
       });
-      if (!res.ok){ const t=await res.text().catch(()=> ''); throw new Error('API '+res.status+': '+t.slice(0,140)); }
+      if (!res.ok){ const t=await res.text().catch(()=> ''); throw new Error('Claude proxy '+res.status+': '+t.slice(0,140)); }
       const data = await res.json();
-      const raw = (data.content?.[0]?.text || '').trim();
+      const raw = (typeof data.text==='string' ? data.text : (data.content?.[0]?.text || '')).trim();
       const m = raw.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
       return JSON.parse(m ? m[0] : raw);
     }
@@ -936,7 +956,7 @@
       if(id==='habits-manage'){ loadHabitsManage(); }
       if(id==='prompt-library'){ loadPromptLibrary(); }
       if(id==='challenges'){ loadChallenges(); }
-      if(id==='apikey'){ initThemeRow(); document.getElementById('apikey-input').value=''; document.getElementById('oura-input').value=getOuraPat(); const who=document.getElementById('otp-whoami'); if(who) who.textContent=authedEmail()?('('+authedEmail()+')'):''; }
+      if(id==='apikey'){ initThemeRow(); document.getElementById('oura-input').value=getOuraPat(); const who=document.getElementById('otp-whoami'); if(who) who.textContent=authedEmail()?('('+authedEmail()+')'):''; }
     }
     document.querySelectorAll('[data-nav]').forEach(c=> c.addEventListener('click', ()=> navigate(c.dataset.nav)));
     document.querySelectorAll('[data-back]').forEach(c=> c.addEventListener('click', ()=> goBack()));
@@ -1080,8 +1100,8 @@
       const cacheKey='ink_morning_blurb_v2_'+today();
       let blurb=null; try{ blurb=JSON.parse(localStorage.getItem(cacheKey)||'null'); }catch{}
       if(blurb && blurb.reflection_id===row.id) return blurb;
-      if(!getApiKey()){
-        // Graceful no-key fallback (no nav interruption from a passive home surface).
+      if(!hasSession()){
+        // Graceful signed-out fallback (no nav interruption from a passive home surface).
         return { reflection_id:row.id, line:'You set a Stoic morning intention today. How is that going?' };
       }
       try{
@@ -1201,7 +1221,7 @@
     }
     async function extractTodayLog(){
       const text=document.getElementById('log-text').value.trim();
-      if(!text || !getApiKey()) return; // F3: silent on passive surface, no opaque failure
+      if(!text || !hasSession()) return; // silent on passive surface, no opaque failure
       const st=document.getElementById('log-status'); st.innerHTML='Extracting <span class="dot"></span>';
       try{
         const r=await callClaude('Parse this personal day-log entry. Conservative extraction — omit uncertain nouns; people = first names only. Return JSON: '+
@@ -1505,8 +1525,8 @@
 
     // ════ Settings / API key ════
     document.getElementById('apikey-save').addEventListener('click', ()=>{
-      setApiKey(document.getElementById('apikey-input').value);
-      const o=document.getElementById('oura-input').value.trim(); if(o) localStorage.setItem('still_oura_pat', o);
+      const o=document.getElementById('oura-input').value.trim();
+      if(o) syncSetting('still_oura_pat', o); else { localStorage.removeItem('still_oura_pat'); }
       showToast('Saved'); goBack();
     });
 
@@ -1604,6 +1624,7 @@
 
     // ── Boot ── (gated on Supabase auth)
     function enterApp(){
+      loadCloudSettings(); // pull login-tied settings (Oura PAT, theme) before paint
       showScreen('home');
       renderHome();
       refreshContentSlot();
