@@ -501,13 +501,39 @@
     function hasSession(){ const x=_authSession(); return !!(x && x.access_token); }
     function authedEmail(){ const x=_authSession(); return (x && x.user && x.user.email) || ''; }
     function _sessionExpired(x){ const exp = x && x.expires_at ? x.expires_at*1000 : 0; return Date.now() > exp - 60000; }
-    async function _refreshSession(){
-      const x=_authSession(); if(!x || !x.refresh_token) return null;
-      try {
-        const r = await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token', { method:'POST', headers:{ 'apikey':SB_KEY, 'Content-Type':'application/json' }, body: JSON.stringify({ refresh_token: x.refresh_token }) });
-        if(!r.ok){ _setAuthSession(null); return null; }
-        const ns = await r.json(); _setAuthSession(ns); return ns;
-      } catch(e){ return null; }
+    // Supabase rotates the refresh token on every use. Without a lock, the
+    // parallel reads fired at boot (Promise.all of 5-6 sbFetch calls) each kick
+    // off their own refresh with the SAME token: the first rotates it, the rest
+    // get "Refresh Token Not Found" and used to wipe the whole session — leaving
+    // later writes to fall back to the anon key and die on RLS. Single-flight the
+    // refresh so concurrent callers share one network round-trip, re-read storage
+    // first in case a sibling tab/app already rotated a fresh token, and don't
+    // nuke a session that another flight may have just refreshed.
+    let _refreshInFlight = null;
+    function _refreshSession(){
+      if (_refreshInFlight) return _refreshInFlight;
+      _refreshInFlight = (async () => {
+        // A sibling flight (this tab) or another suite app (shared session key,
+        // same origin) may have already refreshed — use that instead of burning
+        // our now-stale refresh_token.
+        let x=_authSession();
+        if (x && x.access_token && !_sessionExpired(x)) return x;
+        if (!x || !x.refresh_token) return null;
+        try {
+          const r = await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token', { method:'POST', headers:{ 'apikey':SB_KEY, 'Content-Type':'application/json' }, body: JSON.stringify({ refresh_token: x.refresh_token }) });
+          if(!r.ok){
+            // Re-read: a concurrent refresh elsewhere may have won and stored a
+            // valid session. Only clear if storage still holds the dead token.
+            const cur=_authSession();
+            if (cur && cur.access_token && !_sessionExpired(cur)) return cur;
+            if (cur && cur.refresh_token === x.refresh_token) _setAuthSession(null);
+            return null;
+          }
+          const ns = await r.json(); _setAuthSession(ns); return ns;
+        } catch(e){ return null; }
+      })();
+      _refreshInFlight.finally(()=>{ _refreshInFlight = null; });
+      return _refreshInFlight;
     }
     async function authToken(){ let x=_authSession(); if(!x || !x.access_token) return null; if(_sessionExpired(x)) x=await _refreshSession(); return (x && x.access_token) || null; }
     async function sbBearer(){ return (await authToken()) || SB_KEY; }
@@ -789,7 +815,14 @@
         if (isWrite) return queueWrite(path, opts, method);
         throw netErr;
       }
-      if (!res.ok && res.status !== 404){ const t=await res.text().catch(()=> ''); throw new Error('SB '+res.status+': '+t); }
+      if (!res.ok && res.status !== 404){
+        const t=await res.text().catch(()=> '');
+        // No valid user token → the request went out under the anon key and RLS
+        // rejected it. Don't fail silently into a confusing loop: clear the dead
+        // session and re-show the sign-in gate so the user can re-auth.
+        if ((res.status===401 || res.status===403) && !(await authToken())){ _setAuthSession(null); showOtpGate(); throw new Error('Session expired — sign in again'); }
+        throw new Error('SB '+res.status+': '+t);
+      }
       const out = res.status === 204 ? null : await res.text().then(t=> t ? JSON.parse(t) : null);
       // A successful online write is a good moment to drain any backlog.
       if (isWrite && pendingCount()) flushOutbox();
