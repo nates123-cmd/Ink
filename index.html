@@ -832,22 +832,43 @@
       if (active && active.id==='screen-journal') { try{ openJournal(); }catch{} }
     }
 
-    // ── Claude ── (throws a clear error when no key; callers surface e.message — F3)
+    // ── Claude ── (throws a clear error when unavailable; callers surface e.message — F3)
+    // Prefer the JWT-gated suite proxy (Anthropic key lives server-side, no
+    // client key needed) when the user is signed in. Fall back to a pasted
+    // client key only when there's no session. This is why regeneration was
+    // failing: it required a pasted key that most signed-in users never set.
+    const SYS_JSON = 'You are a precise assistant. Return ONLY valid JSON — no markdown, no backticks, no prose.';
+    function extractJson(raw){
+      const s = (raw || '').trim();
+      const m = s.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+      return JSON.parse(m ? m[0] : s);
+    }
     async function callClaude(userPrompt, maxTokens){
+      const tok = await authToken();
+      if (tok){
+        const res = await fetch(SB_URL+'/functions/v1/claude', {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', 'apikey':SB_KEY, 'Authorization':'Bearer '+tok },
+          body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:maxTokens||1024,
+            system:SYS_JSON, messages:[{ role:'user', content:userPrompt }] }),
+        });
+        if (!res.ok){ const t=await res.text().catch(()=> ''); throw new Error('AI '+res.status+': '+t.slice(0,140)); }
+        const data = await res.json();
+        return extractJson(data.text);
+      }
+      // No session — fall back to a pasted Anthropic key (legacy / signed-out).
       const key = getApiKey();
-      if (!key) throw new Error('No API key — add one in Settings');
+      if (!key) throw new Error('Sign in (or add an API key in Settings) to use AI');
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method:'POST',
         headers:{ 'x-api-key':key, 'anthropic-version':'2023-06-01', 'content-type':'application/json', 'anthropic-dangerous-direct-browser-access':'true' },
         body: JSON.stringify({ model:MODEL, max_tokens:maxTokens||1024,
-          system:'You are a precise assistant. Return ONLY valid JSON — no markdown, no backticks, no prose.',
+          system:SYS_JSON,
           messages:[{ role:'user', content:userPrompt }] }),
       });
       if (!res.ok){ const t=await res.text().catch(()=> ''); throw new Error('API '+res.status+': '+t.slice(0,140)); }
       const data = await res.json();
-      const raw = (data.content?.[0]?.text || '').trim();
-      const m = raw.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
-      return JSON.parse(m ? m[0] : raw);
+      return extractJson(data.content?.[0]?.text);
     }
 
     // ── Toast ──
@@ -1446,7 +1467,9 @@
       });
     }
     async function regenStoicPrompt(idx){
-      if(!requireApiKey('Regenerating a prompt needs an Anthropic API key.')) return; // F3
+      // Signed-in users go through the JWT proxy (no key needed); only prompt
+      // for a pasted key when there's no session to fall back on.
+      if(!hasSession() && !requireApiKey('Regenerating a prompt needs sign-in or an Anthropic API key.')) return; // F3
       const item=document.querySelector('.stoic-prompt-item[data-idx="'+idx+'"]'); if(!item) return;
       const q=item.querySelector('.stoic-prompt-q'); const original=q.textContent; q.textContent='…';
       try{
@@ -1462,6 +1485,15 @@
       const label=STOIC_PRACTICES[stoicType].label;
       const body=pairs.map(p=> 'Q: '+p.q+'\nA: '+p.a).join('\n\n');
       const raw=pairs.map(p=> p.a).join('\n\n');
+      // entries/reflections are per-user RLS (with check auth.uid()=user_id).
+      // Without a valid session an online write falls back to the anon key,
+      // user_id resolves to null, and the insert is rejected ("Save failed").
+      // Prompt to sign in instead of a cryptic error. (Offline still queues to
+      // the outbox and replays once a session is present.)
+      if(navigator.onLine!==false && !(await authToken())){
+        showToast('Sign in to save your reflection');
+        return showOtpGate();
+      }
       try{
         const ent=await sbFetch('entries',{method:'POST',prefer:'return=representation',body:JSON.stringify({raw_text:raw, primary_type:'reflection', source_surface:'stoic_screen'})});
         await sbFetch('reflections',{method:'POST',body:JSON.stringify({source_entry_id:ent?.[0]?.id||null, text:body, tags:['stoic'], prompt_used:label, date:today()})});
