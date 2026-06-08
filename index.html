@@ -1095,28 +1095,34 @@
       label.textContent='Quote'; line.innerHTML=esc(QUOTES[doy % QUOTES.length]);
     }
 
+    // Pull the user's own answers (verbatim) out of a stored "Q: …\nA: …" reflection.
+    function pickIntentionQuote(text){
+      const answers=[];
+      (text||'').split(/\n\s*\n/).forEach(block=>{
+        const m=block.match(/(?:^|\n)A:\s*([\s\S]*)$/);
+        if(m){ const a=m[1].replace(/\s+/g,' ').trim(); if(a) answers.push(a); }
+      });
+      if(!answers.length) return null;
+      // Quote the most substantial answer — their words carry the surface.
+      let s=answers.sort((a,b)=> b.length-a.length)[0];
+      // Partial quote: keep the first sentence, else cap ~150 chars on a word
+      // boundary with an ellipsis. Never cut mid-word.
+      const stop=s.search(/[.!?](\s|$)/);
+      if(stop>0 && stop<=150){ s=s.slice(0, stop+1); }
+      else if(s.length>150){ s=s.slice(0,150); const sp=s.lastIndexOf(' '); if(sp>60) s=s.slice(0,sp); s=s.replace(/[\s,;:]+$/,'')+'…'; }
+      return s;
+    }
     async function getIntentionBlurb(row){
-      // v2 cache key — old entries stored a question-style line; force a refresh.
-      const cacheKey='ink_morning_blurb_v2_'+today();
+      // F4: reflect the user's OWN words back (direct/partial quote) instead of an
+      // AI-synthesized paraphrase — feels personal, and works signed-out / key-free.
+      const cacheKey='ink_morning_blurb_v3_'+today();
       let blurb=null; try{ blurb=JSON.parse(localStorage.getItem(cacheKey)||'null'); }catch{}
       if(blurb && blurb.reflection_id===row.id) return blurb;
-      if(!hasSession()){
-        // Graceful signed-out fallback (no nav interruption from a passive home surface).
-        return { reflection_id:row.id, line:'You set a Stoic morning intention today. How is that going?' };
-      }
-      try{
-        const r=await callClaude(
-          'A user wrote their Stoic morning intention earlier today (Q/A pairs). '+
-          'Identify the single virtue, value, trait, or goal they chose to act on today. '+
-          'Return JSON: { "line":"<exactly ONE warm second-person sentence in this shape: '+
-          '`<Their value, capitalized> was the Stoic value you planned to act on today. How is that going?` '+
-          'Substitute their actual value/goal; keep it to that one sentence; no preamble, no surrounding quotes>" }. '+
-          'Entry:\n\n'+(row.text||'').slice(0,1500));
-        if(!r||!r.line) return null;
-        const blurb2={ reflection_id:row.id, line:r.line };
-        localStorage.setItem(cacheKey, JSON.stringify(blurb2));
-        return blurb2;
-      }catch{ return { reflection_id:row.id, line:'You set a Stoic morning intention today. How is that going?' }; }
+      const q=pickIntentionQuote(row.text);
+      const line = q ? ('\u201C'+q+'\u201D') : 'You set a Stoic morning intention today. How is that going?';
+      const blurb2={ reflection_id:row.id, line };
+      try{ localStorage.setItem(cacheKey, JSON.stringify(blurb2)); }catch{}
+      return blurb2;
     }
 
     // ════ CAPTURE ════
