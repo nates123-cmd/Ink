@@ -6,8 +6,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Ink" />
-  <!-- F1: single static theme-color, matches manifest + --bg. Never rewritten in JS. -->
-  <meta name="theme-color" content="#e8dec0" />
+  <!-- F1: single static theme-color, matches manifest + --bg. -->
+  <meta name="theme-color" content="#F0EAD6" />
   <link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="./icons/icon-16.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180.png" />
@@ -1234,6 +1234,7 @@
           '{ "entities": { "restaurants":[{"name":"","dishes":[],"note":""}], "media":[{"title":"","format":"film|tv|book|podcast|other","note":""}], "people":[], "places":[], "activities":[], "cooking":[] } }\n\nInput: '+text);
         const ent=r.entities||{};
         renderLogTags(ent, true);
+        if(!todayLogRow) await saveTodayLog();
         if(todayLogRow) await sbFetch('day_logs?id=eq.'+todayLogRow.id, {method:'PATCH', body:JSON.stringify({extracted_entities:ent})});
         st.textContent='';
       }catch(e){ st.textContent=''; showToast('Extraction failed — '+e.message); }
