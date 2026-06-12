@@ -13,6 +13,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180.png" />
   <link rel="manifest" href="./manifest.json" />
   <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" rel="stylesheet">
+  <!-- MiniSearch (MIT, lucaong/MiniSearch) — client-side full-text journal search. UMD → window.MiniSearch. -->
+  <script src="https://cdn.jsdelivr.net/npm/minisearch@7.1.1/dist/umd/index.min.js" onerror="void 0"></script>
   <script src="./dev-config.js" onerror="void 0"></script>
   <title>Ink</title>
   <script>
@@ -168,6 +170,15 @@
     .chip.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
     .chip .count { font-size: 10px; opacity: .7; font-variant-numeric: tabular-nums; }
     .chip i { font-size: 12px; }
+
+    /* ── Journal search bar (toggled by the top-bar search icon) ── */
+    .journal-search-bar { display: none; align-items: center; gap: 8px; margin: 0 22px 12px; padding: 9px 12px; border: .5px solid var(--border); border-radius: 999px; background: var(--card-bg); flex-shrink: 0; }
+    .journal-search-bar.show { display: flex; }
+    .journal-search-bar > i.ti-search { font-size: 15px; color: var(--muted); flex-shrink: 0; }
+    .journal-search-bar input { flex: 1; border: none; outline: none; background: transparent; font-family: var(--sans); font-size: 15px; color: var(--text); }
+    .journal-search-bar input::placeholder { color: var(--whisper); }
+    .journal-search-bar #journal-search-clear { width: 26px; height: 26px; flex-shrink: 0; color: var(--muted); }
+    .journal-search-bar #journal-search-clear i { font-size: 14px; }
 
     /* ── Timeline (journal) ── */
     .timeline { padding: 0 22px 24px; }
@@ -370,6 +381,11 @@
     </div>
     <div class="open-days" id="open-days"></div>
     <div class="journal-sep"></div>
+    <div class="journal-search-bar" id="journal-search-bar">
+      <i class="ti ti-search"></i>
+      <input type="text" id="journal-search-input" placeholder="Search entries…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+      <button class="icon-btn" id="journal-search-clear" aria-label="Clear search"><i class="ti ti-x"></i></button>
+    </div>
     <div class="chips-row" id="journal-chips"></div>
     <div class="timeline" id="journal-timeline"></div>
   </div>
@@ -1283,6 +1299,34 @@
     const TYPE_META={ day:['ti-book','Day log'], restaurant:['ti-tools-kitchen-2','Restaurant visit'], media:['ti-player-play','Media'], thought:['ti-quote','Thought'], reflection:['ti-feather','Reflection'] };
     const J_TYPES=[['all','All',''],['day','Days','ti-book'],['restaurant','Restaurants','ti-tools-kitchen-2'],['media','Media','ti-player-play'],['thought','Thoughts','ti-quote'],['reflection','Reflections','ti-feather']];
     let journalFilter='all';
+    // Live full-text search state (MiniSearch). journalItems is lifted to module
+    // scope so renderTimeline + the search box can both read the loaded rows.
+    let journalItems=[], journalSearchIndex=null, journalQuery='';
+    // Flatten a journal item to one searchable text blob: prose/headline/note,
+    // extracted-entity tags, and the ISO date so date strings are queryable too.
+    function journalSearchText(it){
+      const r=it.r||{}, parts=[it.d||''];
+      const push=v=>{ if(v) parts.push(typeof v==='string'?v:(v.name||v.title||'')); };
+      push(r.text); push(r.note); push(r.place_name); push(r.title); push(r.format);
+      push(r.prompt_used); push(r.prompt);
+      for(const p of (r.with_people||[])) push(p);
+      for(const ds of (r.dishes||[])) push(ds);
+      const e=r.extracted_entities||{};
+      for(const k of ['restaurants','people','media','places','activities','cooking'])
+        for(const v of arr(e[k])) push(v);
+      return parts.filter(Boolean).join(' ');
+    }
+    // Build (or rebuild) the in-memory index from the current journalItems.
+    function buildJournalIndex(){
+      if(typeof MiniSearch==='undefined'){ journalSearchIndex=null; return; }
+      const idx=new MiniSearch({
+        fields:['text'],
+        storeFields:['i'],
+        searchOptions:{ prefix:true, fuzzy:0.2, combineWith:'AND' },
+      });
+      idx.addAll(journalItems.map((it,i)=>({ id:i, i, text:journalSearchText(it) })));
+      journalSearchIndex=idx;
+    }
     async function loadJournal(){
       const tl=document.getElementById('journal-timeline'); tl.innerHTML='<div class="spinner"></div>';
       try{
@@ -1300,15 +1344,29 @@
           .concat((thoughts||[]).map(r=>({t:'thought',d:r.thought_date,r})))
           .concat((refl||[]).map(r=>({t:'reflection',d:(r.date||r.created_at?.slice(0,10)),r})));
         items.sort((a,b)=> (b.d||'').localeCompare(a.d||''));
+        journalItems=items;            // module-scope handle for search
+        buildJournalIndex();           // rebuild index whenever entries (re)load
         const counts={all:items.length}; for(const it of items) counts[it.t]=(counts[it.t]||0)+1;
         document.getElementById('journal-chips').innerHTML=J_TYPES.map(([k,lbl,ic])=>
           '<div class="chip'+(k===journalFilter?' active':'')+'" data-f="'+k+'">'+(ic?'<i class="ti '+ic+'"></i> ':'')+lbl+' <span class="count">'+(counts[k]||0)+'</span></div>').join('');
-        document.querySelectorAll('#journal-chips .chip').forEach(c=> c.addEventListener('click', ()=>{ journalFilter=c.dataset.f; renderTimeline(items); document.querySelectorAll('#journal-chips .chip').forEach(x=> x.classList.toggle('active', x.dataset.f===journalFilter)); }));
-        renderTimeline(items);
+        document.querySelectorAll('#journal-chips .chip').forEach(c=> c.addEventListener('click', ()=>{ journalFilter=c.dataset.f; renderTimeline(); document.querySelectorAll('#journal-chips .chip').forEach(x=> x.classList.toggle('active', x.dataset.f===journalFilter)); }));
+        renderTimeline();
       }catch(e){ tl.innerHTML='<p class="stub-note">Couldn’t load journal — '+esc(e.message)+'</p>'; }
     }
-    function renderTimeline(items){
+    function renderTimeline(){
       const tl=document.getElementById('journal-timeline');
+      let items=journalItems;
+      // Apply the live full-text query first (preserves recency order via the
+      // original index), then the type chip.
+      const q=journalQuery.trim();
+      if(q && journalSearchIndex){
+        // Relevance order straight from MiniSearch; map hit ids back to items.
+        items=journalSearchIndex.search(q).map(h=> journalItems[h.i]).filter(Boolean);
+      } else if(q && !journalSearchIndex){
+        // MiniSearch failed to load (offline first paint): graceful substring fallback.
+        const ql=q.toLowerCase();
+        items=journalItems.filter(it=> journalSearchText(it).toLowerCase().includes(ql));
+      }
       const list=items.filter(it=> journalFilter==='all'||it.t===journalFilter);
       if(!list.length){ tl.innerHTML='<p class="list-empty">Nothing here yet.</p>'; return; }
       let html='', curMonth='';
@@ -1338,7 +1396,20 @@
       // reflection — F4: show prompt + a highlight of what was written in the italic note slot
       return head+(r.prompt_used?'<div class="entry-meta">'+esc(r.prompt_used)+'</div>':'')+'<div class="entry-note">'+esc((r.text||'').slice(0,140))+((r.text||'').length>140?'…':'')+'</div>';
     }
-    document.getElementById('journal-search').addEventListener('click', ()=> showToast('Search — v1 task (spec §Journal)'));
+    // ── Journal full-text search (MiniSearch) ──
+    (function(){
+      const bar=document.getElementById('journal-search-bar');
+      const inp=document.getElementById('journal-search-input');
+      const clr=document.getElementById('journal-search-clear');
+      function applyQuery(){ journalQuery=inp.value; renderTimeline(); }
+      document.getElementById('journal-search').addEventListener('click', ()=>{
+        const open=bar.classList.toggle('show');
+        if(open){ inp.focus(); }
+        else { inp.value=''; journalQuery=''; renderTimeline(); }
+      });
+      inp.addEventListener('input', applyQuery);
+      clr.addEventListener('click', ()=>{ inp.value=''; journalQuery=''; renderTimeline(); inp.focus(); });
+    })();
 
     // ════ MIND — Thoughts · Insights · Mantras ════
     // NOTE: relies on the LOCKED-2026-05-18 migration (status / pushed_to_course;
