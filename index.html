@@ -267,6 +267,14 @@
     .mind-item.dismissed .mind-text { color: var(--muted); font-style: italic; }
     .mind-meta { font-size: 10px; color: var(--whisper); letter-spacing: 1px; text-transform: uppercase; margin-top: 6px; }
     .mind-meta .badge { color: var(--accent); }
+    .mind-meta .badge.col { color: var(--accent); text-transform: none; letter-spacing: 0; font-style: italic; }
+    .mind-meta .badge.col .ti { font-size: 11px; vertical-align: -1px; }
+    .mind-colfilter { color: var(--accent); cursor: pointer; text-transform: none; letter-spacing: 0; }
+    .col-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .col-name { font-size: 15px; color: var(--text); cursor: pointer; flex: 1; }
+    .col-meta { font-size: 11px; color: var(--whisper); white-space: nowrap; }
+    .col-ren, .col-del { cursor: pointer; color: var(--accent-soft); }
+    .col-del.danger { color: #a3432f; }
     .mind-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
     .mind-act { font-size: 12px; padding: 5px 11px; border-radius: 999px; border: .5px solid var(--border); background: transparent; color: var(--accent); cursor: pointer; }
     .mind-act.danger { color: var(--muted); }
@@ -395,7 +403,7 @@
     <div class="topbar">
       <button class="icon-btn" id="mind-back" aria-label="Back"><i class="ti ti-arrow-left"></i></button>
       <div class="screen-title">Mind</div>
-      <span style="width:30px"></span>
+      <button class="icon-btn" id="mind-collections-btn" aria-label="Collections"><i class="ti ti-folders"></i></button>
     </div>
     <div class="mind-tabs" id="mind-tabs"></div>
     <div class="mind-toolbar"><span id="mind-count"></span><span class="mind-toggle" id="mind-toggle">Show dismissed</span></div>
@@ -978,6 +986,7 @@
     document.querySelectorAll('[data-back]').forEach(c=> c.addEventListener('click', ()=> goBack()));
     document.getElementById('journal-back').addEventListener('click', ()=> goBack());
     document.getElementById('mind-back').addEventListener('click', ()=> goBack());
+    document.getElementById('mind-collections-btn').addEventListener('click', ()=> openCollectionsPanel());
     document.getElementById('stoic-back').addEventListener('click', ()=> goBack());
     document.getElementById('apikey-back').addEventListener('click', ()=> goBack());
     document.getElementById('capture-close').addEventListener('click', ()=> goBack());
@@ -1162,9 +1171,11 @@
       try{
         const ent=await sbFetch('entries',{method:'POST',prefer:'return=representation',
           body:JSON.stringify({raw_text:text, primary_type:'thought', source_surface:'thoughts_screen'})});
-        await sbFetch('thoughts',{method:'POST',
+        const tr=await sbFetch('thoughts',{method:'POST',prefer:'return=representation',
           body:JSON.stringify({source_entry_id:ent?.[0]?.id||null, text, thought_date:today(), status:'active'})});
         showToast('Captured'); navStack=[]; slideTo('home','right');
+        // Suggestion-on-write: cluster async, propose a collection to confirm.
+        const row=tr?.[0]; if(row) suggestCollection('thoughts','thought', row.id, text);
       }catch(e){ showToast('Save failed — '+e.message); btn.disabled=false; }
     }
 
@@ -1415,15 +1426,17 @@
     // NOTE: relies on the LOCKED-2026-05-18 migration (status / pushed_to_course;
     // source_entry_id on insights). `insights` is Still's table — assumed `.text`.
     const MIND_TABS=[
-      { k:'thoughts', label:'Thoughts', table:'thoughts', dateCol:'thought_date' },
-      { k:'insights', label:'Insights', table:'insights', dateCol:'created_at' },
-      { k:'mantras',  label:'Mantras',  table:'mantras',  dateCol:'created_at' },
+      { k:'thoughts', label:'Thoughts', table:'thoughts', dateCol:'thought_date', etype:'thought' },
+      { k:'insights', label:'Insights', table:'insights', dateCol:'created_at', etype:'insight' },
+      { k:'mantras',  label:'Mantras',  table:'mantras',  dateCol:'created_at', etype:'mantra' },
     ];
     let mindTab='thoughts', mindShowDismissed=false, mindRows=[];
+    // Collections cache for the current tab's entry_type (id→name) + active filter.
+    let mindCols=[], mindColMap={}, mindColFilter=null;
     function renderMindTabs(){
       document.getElementById('mind-tabs').innerHTML=MIND_TABS.map(t=>
         '<button class="mind-tab'+(t.k===mindTab?' active':'')+'" data-k="'+t.k+'">'+t.label+'</button>').join('');
-      document.querySelectorAll('#mind-tabs .mind-tab').forEach(b=> b.addEventListener('click', ()=>{ mindTab=b.dataset.k; loadMind(); }));
+      document.querySelectorAll('#mind-tabs .mind-tab').forEach(b=> b.addEventListener('click', ()=>{ mindTab=b.dataset.k; mindColFilter=null; loadMind(); }));
       const tog=document.getElementById('mind-toggle');
       tog.textContent=mindShowDismissed?'Show active':'Show dismissed';
       tog.onclick=()=>{ mindShowDismissed=!mindShowDismissed; loadMind(); };
@@ -1434,21 +1447,31 @@
       const listEl=document.getElementById('mind-list'); listEl.innerHTML='<div class="spinner"></div>';
       const status=mindShowDismissed?'dismissed':'active';
       try{
-        mindRows=await sbFetch(tab.table+'?status=eq.'+status+'&order=created_at.desc&limit=200') || [];
-        document.getElementById('mind-count').textContent=mindRows.length+' '+(status==='active'?'active':'dismissed');
-        if(!mindRows.length){ listEl.innerHTML='<p class="list-empty">'+(status==='active'?'Nothing here yet.':'No dismissed items.')+'</p>'; return; }
+        // Collections for this tab's type (id→name), used for chips + filter + sheet.
+        mindCols=await sbFetch('collections?entry_type=eq.'+tab.etype+'&order=name.asc') || [];
+        mindColMap={}; mindCols.forEach(c=> mindColMap[c.id]=c.name);
+        if(mindColFilter && !mindColMap[mindColFilter]) mindColFilter=null; // filtered collection deleted
+        let q=tab.table+'?status=eq.'+status+'&order=created_at.desc&limit=200';
+        if(mindColFilter) q+='&collection_id=eq.'+mindColFilter;
+        mindRows=await sbFetch(q) || [];
+        const cnt=document.getElementById('mind-count');
+        cnt.innerHTML=mindRows.length+' '+(status==='active'?'active':'dismissed')+
+          (mindColFilter?' · <span class="mind-colfilter">'+esc(mindColMap[mindColFilter])+' ✕</span>':'');
+        const cf=cnt.querySelector('.mind-colfilter'); if(cf) cf.onclick=()=>{ mindColFilter=null; loadMind(); };
+        if(!mindRows.length){ listEl.innerHTML='<p class="list-empty">'+(mindColFilter?'Nothing in this collection.':(status==='active'?'Nothing here yet.':'No dismissed items.'))+'</p>'; return; }
         listEl.innerHTML=mindRows.map((r,i)=>{
           const raw=r[tab.dateCol]||r.created_at||'';
           const dd=raw?new Date(raw.length<=10?raw+'T12:00:00':raw).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
           const acts=[['edit','Edit']];
           if(tab.k==='thoughts'){ acts.push(['to-insights','→ Insight']); acts.push(['to-mantras','→ Mantra']); }
           if(tab.k==='insights'){ acts.push(['to-mantras','→ Mantra']); }
+          acts.push(['collection', r.collection_id?'Move collection':'Add to collection']);
           acts.push(['push','Push to Course']);
           acts.push(mindShowDismissed?['resurface','Resurface']:['dismiss','Dismiss']);
           acts.push(['delete','Delete']);
           return '<div class="mind-item'+(mindShowDismissed?' dismissed':'')+'" data-i="'+i+'">'+
             '<div class="mind-text" data-edit="1" title="Tap to edit">'+esc(r.text||'')+'</div>'+
-            '<div class="mind-meta">'+esc(dd)+(r.pushed_to_course?' · <span class="badge">Pushed to Course</span>':'')+(mindShowDismissed?' · Dismissed':'')+'</div>'+
+            '<div class="mind-meta">'+esc(dd)+(r.collection_id&&mindColMap[r.collection_id]?' · <span class="badge col"><i class="ti ti-folder"></i> '+esc(mindColMap[r.collection_id])+'</span>':'')+(r.pushed_to_course?' · <span class="badge">Pushed to Course</span>':'')+(mindShowDismissed?' · Dismissed':'')+'</div>'+
             '<div class="mind-actions">'+acts.map(([a,l])=>
               '<button class="mind-act'+(a==='delete'||a==='dismiss'?' danger':'')+'" data-act="'+a+'">'+l+'</button>').join('')+
             '</div></div>';
@@ -1470,6 +1493,7 @@
       if(act==='to-insights') return promoteSheet(tab.table, row, 'insights', 'Insights');
       if(act==='to-mantras')  return promoteSheet(tab.table, row, 'mantras', 'Mantras');
       if(act==='push')        return pushSheet(tab.table, row);
+      if(act==='collection')  return collectionSheet(tab, row);
       if(act==='dismiss')     return setStatus(tab.table, row, 'dismissed');
       if(act==='resurface')   return setStatus(tab.table, row, 'active');
       if(act==='delete')      return deleteSheet(tab.table, row);
@@ -1544,6 +1568,126 @@
             try{ await sbFetch(table+'?id=eq.'+row.id,{method:'PATCH',body:JSON.stringify({pushed_to_course:true})}); }catch{}
             hideModal(); showToast('Pushed to Course'); loadMind();
           }catch(e){ showToast('Push failed — '+e.message); }
+        }));
+      });
+    }
+
+    // ════ COLLECTIONS — auto-named thematic groupings of Mind entries ════
+    // One collection per entry (collection_id FK). Suggestion-on-write proposes a
+    // name from content; the user confirms. Manual assign/reassign via the action
+    // sheet; the header panel lists/filters/renames/deletes.
+    async function findOrCreateCollection(etype, name){
+      name=(name||'').trim(); if(!name) return null;
+      // Reuse a same-type collection when the name matches (case-insensitive).
+      const local=(mindCols||[]).find(c=> c.entry_type===etype && c.name.toLowerCase()===name.toLowerCase());
+      if(local) return local.id;
+      const hit=(await sbFetch('collections?entry_type=eq.'+etype+'&name=ilike.'+encodeURIComponent(name)) || [])[0];
+      if(hit) return hit.id;
+      const rows=await sbFetch('collections',{method:'POST',prefer:'return=representation',
+        body:JSON.stringify({name, entry_type:etype})});
+      return rows?.[0]?.id||null;
+    }
+    function assignCollection(table, rowId, collectionId){
+      return sbFetch(table+'?id=eq.'+rowId,{method:'PATCH',body:JSON.stringify({collection_id:collectionId})});
+    }
+    // Suggestion-on-write: fired async after the insert resolves. Proposes ONE
+    // collection; only creates it if the user confirms — ignored suggestions never
+    // touch the table.
+    async function suggestCollection(table, etype, rowId, text){
+      if(!hasSession()) return;
+      try{
+        const names=(await sbFetch('collections?entry_type=eq.'+etype+'&select=name&order=name.asc') || []).map(c=> c.name);
+        const r=await callClaude(
+          'You sort short personal '+etype+' notes into thematic collections. Given a new note and the existing '+
+          'collection names, choose the single best collection: reuse an existing name VERBATIM if the note clearly '+
+          'fits one, otherwise invent a fresh 2-4 word Title Case theme. Prefer reusing; only invent when nothing fits. '+
+          'Existing collections: '+(names.length?names.map(n=> JSON.stringify(n)).join(', '):'(none yet)')+'. '+
+          'New note: '+JSON.stringify(text)+'. Return JSON: { "name": "" }');
+        const name=((r&&r.name)||'').trim(); if(!name) return;
+        const isNew=!names.some(n=> n.toLowerCase()===name.toLowerCase());
+        showCollectionSuggestion(table, etype, rowId, name, isNew);
+      }catch{ /* best-effort; stay silent on failure */ }
+    }
+    function showCollectionSuggestion(table, etype, rowId, name, isNew){
+      showModal('<h4>Add to a collection?</h4>'+
+        '<p class="stub-note" style="padding:4px 0 12px">Ink thinks this belongs in '+
+          '<span class="badge col"><i class="ti ti-folder"></i> '+esc(name)+'</span>'+(isNew?' <em>(new)</em>':'')+'.</p>'+
+        '<div style="display:flex;gap:8px">'+
+          '<button class="btn btn-secondary" id="sheet-cancel" style="flex:1">Not now</button>'+
+          '<button class="btn btn-primary" id="sheet-primary" style="flex:1">Add</button></div>', ()=>{
+        document.getElementById('sheet-cancel').addEventListener('click', hideModal);
+        document.getElementById('sheet-primary').addEventListener('click', async ()=>{
+          try{
+            const cid=await findOrCreateCollection(etype, name);
+            if(cid) await assignCollection(table, rowId, cid);
+            hideModal(); showToast('Added to “'+name+'”');
+            if(document.querySelector('.screen.active')?.id==='screen-mind') loadMind();
+          }catch(e){ showToast('Failed — '+e.message); }
+        });
+      });
+    }
+    // Manual assign / reassign / remove for a single entry.
+    async function collectionSheet(tab, row){
+      let cols=mindCols;
+      if(!cols || !cols.length) cols=await sbFetch('collections?entry_type=eq.'+tab.etype+'&order=name.asc') || [];
+      const rows=cols.map(c=> '<div class="sheet-row" data-cid="'+esc(c.id)+'">'+
+          (c.id===row.collection_id?'<i class="ti ti-check"></i> ':'')+esc(c.name)+'</div>').join('');
+      showModal('<h4>Collection</h4>'+
+        (rows||'<p class="stub-note" style="padding:4px 0">No collections yet.</p>')+
+        '<div class="sheet-row" data-new="1"><i class="ti ti-plus"></i> New collection…</div>'+
+        (row.collection_id?'<div class="sheet-row danger" data-remove="1">Remove from collection</div>':''), ()=>{
+        document.querySelectorAll('#modal-sheet .sheet-row').forEach(el=> el.addEventListener('click', async ()=>{
+          try{
+            if(el.dataset.new){
+              const name=prompt('New collection name'); if(!name||!name.trim()) return;
+              const cid=await findOrCreateCollection(tab.etype, name.trim());
+              await assignCollection(tab.table, row.id, cid);
+            } else if(el.dataset.remove){
+              await assignCollection(tab.table, row.id, null);
+            } else {
+              await assignCollection(tab.table, row.id, el.dataset.cid);
+            }
+            hideModal(); showToast('Updated'); loadMind();
+          }catch(e){ showToast('Failed — '+e.message); }
+        }));
+      });
+    }
+    // Header panel — every collection for the current type with entry counts; tap a
+    // name to filter the list, rename or delete inline (delete keeps entries; FK set null).
+    async function openCollectionsPanel(){
+      const tab=MIND_TABS.find(t=> t.k===mindTab);
+      const cols=await sbFetch('collections?entry_type=eq.'+tab.etype+'&order=name.asc') || [];
+      const all=await sbFetch(tab.table+'?select=collection_id&limit=1000') || [];
+      const counts={}; all.forEach(r=>{ if(r.collection_id) counts[r.collection_id]=(counts[r.collection_id]||0)+1; });
+      const body=cols.length? cols.map(c=>
+        '<div class="sheet-row col-row">'+
+          '<span class="col-name" data-cid="'+esc(c.id)+'">'+esc(c.name)+'</span>'+
+          '<span class="col-meta">'+(counts[c.id]||0)+' · '+
+            '<span class="col-ren" data-cid="'+esc(c.id)+'" data-name="'+esc(c.name)+'">rename</span> · '+
+            '<span class="col-del danger" data-cid="'+esc(c.id)+'" data-name="'+esc(c.name)+'">delete</span></span>'+
+        '</div>').join('')
+        : '<p class="stub-note" style="padding:6px 0">No '+tab.label.toLowerCase()+' collections yet. They form as you capture.</p>';
+      showModal('<h4>'+tab.label+' collections</h4>'+
+        (mindColFilter?'<div class="sheet-row" data-all="1"><i class="ti ti-list"></i> Show all</div>':'')+body, ()=>{
+        document.querySelectorAll('#modal-sheet .col-name').forEach(el=> el.addEventListener('click', ()=>{
+          mindColFilter=el.dataset.cid; hideModal(); loadMind();
+        }));
+        const allRow=document.querySelector('#modal-sheet [data-all]');
+        if(allRow) allRow.addEventListener('click', ()=>{ mindColFilter=null; hideModal(); loadMind(); });
+        document.querySelectorAll('#modal-sheet .col-ren').forEach(el=> el.addEventListener('click', async (e)=>{
+          e.stopPropagation();
+          const name=prompt('Rename collection', el.dataset.name); if(!name||!name.trim()||name.trim()===el.dataset.name) return;
+          try{ await sbFetch('collections?id=eq.'+el.dataset.cid,{method:'PATCH',body:JSON.stringify({name:name.trim(), updated_at:new Date().toISOString()})});
+            hideModal(); showToast('Renamed'); loadMind(); }
+          catch(err){ showToast('Rename failed — '+err.message); }
+        }));
+        document.querySelectorAll('#modal-sheet .col-del').forEach(el=> el.addEventListener('click', async (e)=>{
+          e.stopPropagation();
+          if(!confirm('Delete “'+el.dataset.name+'”? Entries stay; they just leave the collection.')) return;
+          try{ await sbFetch('collections?id=eq.'+el.dataset.cid,{method:'DELETE'});
+            if(mindColFilter===el.dataset.cid) mindColFilter=null;
+            hideModal(); showToast('Collection deleted'); loadMind(); }
+          catch(err){ showToast('Delete failed — '+err.message); }
         }));
       });
     }
