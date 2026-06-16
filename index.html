@@ -1466,7 +1466,6 @@
           if(tab.k==='thoughts'){ acts.push(['to-insights','→ Insight']); acts.push(['to-mantras','→ Mantra']); }
           if(tab.k==='insights'){ acts.push(['to-mantras','→ Mantra']); }
           acts.push(['collection', r.collection_id?'Move collection':'Add to collection']);
-          acts.push(['push','Push to Course']);
           acts.push(mindShowDismissed?['resurface','Resurface']:['dismiss','Dismiss']);
           acts.push(['delete','Delete']);
           return '<div class="mind-item'+(mindShowDismissed?' dismissed':'')+'" data-i="'+i+'">'+
@@ -1492,7 +1491,6 @@
       if(act==='edit')        return editSheet(tab.table, row);
       if(act==='to-insights') return promoteSheet(tab.table, row, 'insights', 'Insights');
       if(act==='to-mantras')  return promoteSheet(tab.table, row, 'mantras', 'Mantras');
-      if(act==='push')        return pushSheet(tab.table, row);
       if(act==='collection')  return collectionSheet(tab, row);
       if(act==='dismiss')     return setStatus(tab.table, row, 'dismissed');
       if(act==='resurface')   return setStatus(tab.table, row, 'active');
@@ -1555,23 +1553,6 @@
         });
       });
     }
-    // Push to Course — plain insert into the shared `course_captures` inbox.
-    function pushSheet(table, row){
-      const kinds=[['task','Task'],['project','Project'],['note','Note']];
-      showModal('<h4>Push to Course</h4>'+kinds.map(([k,l])=> '<div class="sheet-row" data-k="'+k+'">'+l+'</div>').join(''), ()=>{
-        document.querySelectorAll('#modal-sheet .sheet-row').forEach(r=> r.addEventListener('click', async ()=>{
-          const k=r.dataset.k;
-          try{
-            const body={ raw_text:'['+k+'] '+(row.text||''), status:'pending' };
-            if(k==='task') body.suggested_task_title=row.text||'';
-            await sbFetch('course_captures',{method:'POST',body:JSON.stringify(body)});
-            try{ await sbFetch(table+'?id=eq.'+row.id,{method:'PATCH',body:JSON.stringify({pushed_to_course:true})}); }catch{}
-            hideModal(); showToast('Pushed to Course'); loadMind();
-          }catch(e){ showToast('Push failed — '+e.message); }
-        }));
-      });
-    }
-
     // ════ COLLECTIONS — auto-named thematic groupings of Mind entries ════
     // One collection per entry (collection_id FK). Suggestion-on-write proposes a
     // name from content; the user confirms. Manual assign/reassign via the action
