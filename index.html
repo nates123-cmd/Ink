@@ -206,10 +206,10 @@
     .entry-thought { font-family: var(--serif); font-size: 13.5px; line-height: 1.55; color: var(--text-soft); font-style: italic; }
 
     /* ── Compose / Capture ── */
-    .compose-area { padding: 22px 24px 110px; flex: 1; }
-    .date-line { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+    .compose-area { padding: 22px 24px 110px; flex: 1; display: flex; flex-direction: column; }
+    .date-line { font-size: 11px; color: var(--whisper); margin-top: auto; padding-top: 14px; }
     .date-line .dot { color: var(--whisper); margin: 0 6px; }
-    textarea.compose { width: 100%; border: none; outline: none; resize: none; background: transparent; font-family: var(--serif); font-size: 17px; line-height: 1.6; color: var(--text); min-height: 240px; }
+    textarea.compose { width: 100%; border: none; outline: none; resize: none; background: transparent; font-family: var(--serif); font-size: 17px; line-height: 1.6; color: var(--text); min-height: 240px; flex: 1; }
     textarea.compose::placeholder { color: var(--whisper); font-style: italic; }
     .bottom-bar { position: absolute; bottom: 0; left: 0; right: 0; padding: 14px 22px calc(22px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 70%, transparent); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
     .meta-text { font-size: 11px; color: var(--whisper); letter-spacing: .5px; }
@@ -359,8 +359,8 @@
       </div>
     </div>
     <div class="compose-area">
-      <div class="date-line" id="capture-date">—</div>
       <textarea class="compose" id="capture-text" placeholder="What's on your mind?"></textarea>
+      <div class="date-line" id="capture-date">—</div>
     </div>
     <div class="bottom-bar">
       <span class="meta-text" id="capture-count">0 chars</span>
