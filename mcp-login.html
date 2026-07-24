@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Connect Ink</title>
+<style>
+:root{--bg:#F0EAD6;--card:#FBF7EC;--ink:#20211E;--mut:#7A756A;--acc:#3D4A7A;--line:#DED5BE}
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
+body{background:var(--bg);color:var(--ink);margin:0;display:grid;place-items:center;min-height:100vh}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:32px;width:340px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.brand{display:flex;align-items:center;gap:9px;margin:0 0 18px;font-family:Georgia,serif;letter-spacing:.01em}
+.dot{width:22px;height:22px;border-radius:7px;background:var(--acc)}
+h1{font-size:19px;margin:0 0 4px;font-family:Georgia,serif;font-weight:600}
+p.sub{color:var(--mut);font-size:13px;margin:0 0 20px;line-height:1.5}
+label{font-size:12px;color:var(--mut);display:block;margin:0 0 6px}
+input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:9px;font-size:15px;margin:0 0 14px;outline:none;background:#fff;color:var(--ink)}
+input:focus{border-color:var(--acc)}
+button{width:100%;padding:11px;background:var(--acc);color:#fff;border:0;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+.msg{font-size:13px;color:var(--mut);margin:14px 0 0;min-height:18px;line-height:1.4}
+.msg.err{color:#9B3B2F}
+.foot{font-size:11px;color:var(--mut);margin:16px 0 0}
+.hide{display:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brand"><div class="dot"></div><strong>Ink</strong></div>
+  <h1>Connect Ink</h1>
+  <p class="sub">Sign in to let Claude read and write your journal.</p>
+  <div id="s1">
+    <label>Email</label>
+    <input id="email" type="email" autocomplete="email" placeholder="you@example.com">
+    <button id="send">Send code</button>
+  </div>
+  <div id="s2" class="hide">
+    <label>8-digit code (check your email)</label>
+    <input id="code" inputmode="numeric" placeholder="••••••••" maxlength="8">
+    <button id="verify">Verify &amp; connect</button>
+  </div>
+  <p class="msg" id="msg"></p>
+  <p class="foot" id="foot"></p>
+</div>
+<script>
+// Login UI for the Ink MCP OAuth flow. Talks to the edge function endpoints
+// (CORS-open). The function's /authorize redirects here with the OAuth params.
+var FN = "https://xsmnfcmtbpeaccnyinkr.supabase.co/functions/v1/ink-mcp";
+var qs = new URLSearchParams(location.search);
+var R = {
+  redirect_uri: qs.get("redirect_uri") || "",
+  state: qs.get("state") || "",
+  code_challenge: qs.get("code_challenge") || ""
+};
+var $ = function(i){ return document.getElementById(i); };
+var msg = $("msg");
+function err(t){ msg.textContent = t; msg.className = "msg err"; }
+function ok(t){ msg.textContent = t; msg.className = "msg"; }
+
+if(!R.redirect_uri || !R.code_challenge){
+  err("Missing authorization parameters. Start the connection from Claude.");
+  $("send").disabled = true;
+}
+
+$("send").onclick = function(){
+  var email = $("email").value.trim();
+  if(!email) return err("Enter your email");
+  $("send").disabled = true; ok("Sending…");
+  fetch(FN + "/authorize/send", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ email: email })
+  }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+    .then(function(res){
+      $("send").disabled = false;
+      if(!res.ok){ err(res.d.error || "Could not send code"); return; }
+      $("s1").className = "hide"; $("s2").className = "";
+      ok("Code sent to " + email); $("code").focus();
+      $("verify").dataset.email = email;
+    }).catch(function(){ $("send").disabled = false; err("Network error"); });
+};
+
+$("verify").onclick = function(){
+  var email = $("verify").dataset.email;
+  var token = $("code").value.replace(/\D/g, "");
+  if(token.length < 6) return err("Enter the code");
+  $("verify").disabled = true; ok("Verifying…");
+  fetch(FN + "/authorize/verify", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ email: email, token: token, redirect_uri: R.redirect_uri, state: R.state, code_challenge: R.code_challenge })
+  }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+    .then(function(res){
+      if(!res.ok){ $("verify").disabled = false; err(res.d.error || "Verification failed"); return; }
+      ok("Connected — returning to Claude…");
+      window.location = res.d.redirect;
+    }).catch(function(){ $("verify").disabled = false; err("Network error"); });
+};
+</script>
+</body>
+</html>
