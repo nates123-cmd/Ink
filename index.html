@@ -274,6 +274,10 @@
     .mind-meta { font-size: 10px; color: var(--whisper); letter-spacing: 1px; text-transform: uppercase; margin-top: 6px; }
     .mind-meta .badge { color: var(--accent); }
     .mind-meta .badge.col { color: var(--accent); text-transform: none; letter-spacing: 0; font-style: italic; }
+    /* Type badge — the list is one stream, so each row says what it is. */
+    .mind-meta .badge.kind { display: inline-block; padding: 2px 7px; border-radius: 999px; border: .5px solid var(--border); color: var(--muted); letter-spacing: 1px; }
+    .mind-meta .badge.kind.insight { color: var(--accent); border-color: var(--accent); }
+    .mind-meta .badge.kind.mantra { color: var(--text); background: var(--card-bg); }
     .mind-meta .badge.col .ti { font-size: 11px; vertical-align: -1px; }
     .mind-colfilter { color: var(--accent); cursor: pointer; text-transform: none; letter-spacing: 0; }
     .col-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
@@ -294,7 +298,8 @@
     textarea.input, .rich.input { font-family: var(--serif); line-height: 1.6; resize: vertical; min-height: 160px; }
     .rich.input { overflow-y: auto; max-height: 46vh; }
     .prompt-banner { background: var(--card-bg); border: .5px solid var(--border); border-radius: 12px; padding: 14px 16px; font-family: var(--serif); font-style: italic; color: var(--text-soft); font-size: 14.5px; line-height: 1.5; margin-bottom: 16px; }
-    .stoic-type-row { display: flex; gap: 8px; padding: 0 0 16px; }
+    .stoic-type-row { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 0 16px; }
+    .stoic-type-row .stoic-type-btn { flex: 1 1 40%; }
     .stoic-type-btn { flex: 1; padding: 10px 8px; border-radius: 10px; border: .5px solid var(--border); background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; }
     .stoic-type-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
     .theme-btn { flex: 1; padding: 10px 8px; border-radius: 10px; border: .5px solid var(--border); background: transparent; color: var(--muted); font-size: 13px; cursor: pointer; font-family: var(--sans); }
@@ -304,6 +309,18 @@
     .stoic-prompt-dots { font-size: 11px; color: var(--whisper); margin-top: 8px; letter-spacing: 2px; }
     .stoic-a { width: 100%; margin-top: 10px; min-height: 60px; padding: 10px 12px; border: .5px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); font-family: var(--serif); font-size: 14px; line-height: 1.55; outline: none; resize: vertical; }
     .stoic-a:focus { border-color: var(--accent-soft); }
+    /* ── Fear Setting — one prompt at a time ── */
+    .fear-step { font-size: 10.5px; color: var(--whisper); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
+    .fear-dots { display: flex; gap: 5px; margin-bottom: 18px; }
+    .fear-dot { height: 3px; flex: 1; border-radius: 2px; background: var(--border); }
+    .fear-dot.done { background: var(--accent-soft, var(--accent)); opacity: .5; }
+    .fear-dot.now { background: var(--accent); opacity: 1; }
+    .fear-q { font-family: var(--serif); font-size: 19px; line-height: 1.45; color: var(--text); margin-bottom: 6px; }
+    .fear-hint { font-size: 12.5px; color: var(--muted); font-style: italic; line-height: 1.5; margin-bottom: 14px; }
+    .fear-nav { display: flex; gap: 8px; margin-top: 14px; }
+    .fear-review-q { font-family: var(--serif); font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+    .fear-review-a { font-family: var(--serif); font-size: 15px; color: var(--text); line-height: 1.55; white-space: pre-wrap; margin-bottom: 16px; }
+    .fear-read { background: var(--card-bg); border: .5px solid var(--border); border-radius: 12px; padding: 14px 16px; font-family: var(--serif); font-size: 14.5px; line-height: 1.6; color: var(--text); white-space: pre-wrap; margin-top: 8px; }
     .list-empty { color: var(--muted); text-align: center; padding: 40px 0; font-size: 14px; font-style: italic; font-family: var(--serif); }
     .spinner { width: 22px; height: 22px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin: 40px auto; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -432,6 +449,18 @@
       <div id="stoic-prompts"></div>
       <button class="btn btn-primary" id="stoic-save" style="margin-top:6px;width:100%">Save reflection</button>
     </div>
+  </div>
+
+  <!-- ══ FEAR SETTING (from Stoic) — guided, one prompt at a time ══ -->
+  <div class="screen" id="screen-fear">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="icon-btn" id="fear-back" aria-label="Back"><i class="ti ti-arrow-left"></i></button>
+        <div class="crumb">Fear Setting</div>
+      </div>
+      <button class="icon-btn" id="fear-restart" aria-label="Start over" title="Start over"><i class="ti ti-rotate"></i></button>
+    </div>
+    <div class="pad" id="fear-body"></div>
   </div>
 
   <!-- ══ AUTH GATE (Supabase email OTP) ══ -->
@@ -1103,6 +1132,7 @@
       if(id==='journal'){ openJournal(); }
       if(id==='mind'){ loadMind(); }
       if(id==='stoic'){ initStoic(); }
+      if(id==='fear'){ openFear(); }
       if(id==='habits-manage'){ loadHabitsManage(); }
       if(id==='prompt-library'){ loadPromptLibrary(); }
       if(id==='challenges'){ loadChallenges(); }
@@ -1552,58 +1582,75 @@
       clr.addEventListener('click', ()=>{ inp.value=''; journalQuery=''; renderTimeline(); inp.focus(); });
     })();
 
-    // ════ MIND — Thoughts · Insights · Mantras ════
+    // ════ MIND — one flat, badged stream (Thoughts · Insights · Mantras) ════
+    // Redesigned 2026-07-31: the three types were tabs, so seeing everything in a
+    // collection meant flipping between them. Now it is ONE scrollable list, newest
+    // first, each row badged with its type. The type chips are a filter, not
+    // navigation — "All" is the default and nothing forces a click.
     // NOTE: relies on the LOCKED-2026-05-18 migration (status / pushed_to_course;
     // source_entry_id on insights). `insights` is Still's table — assumed `.text`.
-    const MIND_TABS=[
-      { k:'thoughts', label:'Thoughts', table:'thoughts', dateCol:'thought_date', etype:'thought' },
-      { k:'insights', label:'Insights', table:'insights', dateCol:'created_at', etype:'insight' },
-      { k:'mantras',  label:'Mantras',  table:'mantras',  dateCol:'created_at', etype:'mantra' },
-    ];
-    let mindTab='thoughts', mindShowDismissed=false, mindRows=[];
-    // Collections cache for the current tab's entry_type (id→name) + active filter.
+    const MIND_KINDS={
+      thought: { label:'Thought', plural:'Thoughts', table:'thoughts', dateCol:'thought_date', etype:'thought' },
+      insight: { label:'Insight', plural:'Insights', table:'insights', dateCol:'created_at',   etype:'insight' },
+      mantra:  { label:'Mantra',  plural:'Mantras',  table:'mantras',  dateCol:'created_at',   etype:'mantra' },
+    };
+    const MIND_ORDER=['thought','insight','mantra'];
+    // 'dismissed' is the stored value; the UI calls it FILED. Dismissing never
+    // meant "gone", it meant "dealt with — stop showing me this".
+    let mindType='all', mindShowFiled=false, mindRows=[];
     let mindCols=[], mindColMap={}, mindColFilter=null;
+    function mindMeta(r){ return MIND_KINDS[r._kind]; }
     function renderMindTabs(){
-      document.getElementById('mind-tabs').innerHTML=MIND_TABS.map(t=>
-        '<button class="mind-tab'+(t.k===mindTab?' active':'')+'" data-k="'+t.k+'">'+t.label+'</button>').join('');
-      document.querySelectorAll('#mind-tabs .mind-tab').forEach(b=> b.addEventListener('click', ()=>{ mindTab=b.dataset.k; mindColFilter=null; loadMind(); }));
+      const chips=[['all','All']].concat(MIND_ORDER.map(k=> [k, MIND_KINDS[k].plural]));
+      document.getElementById('mind-tabs').innerHTML=chips.map(([k,l])=>
+        '<button class="mind-tab'+(k===mindType?' active':'')+'" data-k="'+k+'">'+l+'</button>').join('');
+      document.querySelectorAll('#mind-tabs .mind-tab').forEach(b=> b.addEventListener('click', ()=>{ mindType=b.dataset.k; loadMind(); }));
       const tog=document.getElementById('mind-toggle');
-      tog.textContent=mindShowDismissed?'Show active':'Show dismissed';
-      tog.onclick=()=>{ mindShowDismissed=!mindShowDismissed; loadMind(); };
+      tog.textContent=mindShowFiled?'Show open':'Show filed';
+      tog.onclick=()=>{ mindShowFiled=!mindShowFiled; loadMind(); };
     }
     async function loadMind(){
       renderMindTabs();
-      const tab=MIND_TABS.find(t=> t.k===mindTab);
       const listEl=document.getElementById('mind-list'); listEl.innerHTML='<div class="spinner"></div>';
-      const status=mindShowDismissed?'dismissed':'active';
+      const status=mindShowFiled?'dismissed':'active';
       try{
-        // Collections for this tab's type (id→name), used for chips + filter + sheet.
-        mindCols=await sbFetch('collections?entry_type=eq.'+tab.etype+'&order=name.asc') || [];
+        // Collections are flat — one namespace across all three types.
+        mindCols=await sbFetch('collections?order=name.asc') || [];
         mindColMap={}; mindCols.forEach(c=> mindColMap[c.id]=c.name);
         if(mindColFilter && !mindColMap[mindColFilter]) mindColFilter=null; // filtered collection deleted
-        let q=tab.table+'?status=eq.'+status+'&order=created_at.desc&limit=200';
-        if(mindColFilter) q+='&collection_id=eq.'+mindColFilter;
-        mindRows=await sbFetch(q) || [];
+        const kinds=mindType==='all'?MIND_ORDER:[mindType];
+        const sets=await Promise.all(kinds.map(async k=>{
+          const m=MIND_KINDS[k];
+          let q=m.table+'?status=eq.'+status+'&order=created_at.desc&limit=200';
+          if(mindColFilter) q+='&collection_id=eq.'+mindColFilter;
+          return ((await sbFetch(q)) || []).map(r=> Object.assign(r, { _kind:k }));
+        }));
+        mindRows=sets.flat().sort((a,b)=> String(b.created_at||'').localeCompare(String(a.created_at||''))).slice(0,200);
         const cnt=document.getElementById('mind-count');
-        cnt.innerHTML=mindRows.length+' '+(status==='active'?'active':'dismissed')+
+        cnt.innerHTML=mindRows.length+' '+(status==='active'?'open':'filed')+
           (mindColFilter?' · <span class="mind-colfilter">'+esc(mindColMap[mindColFilter])+' ✕</span>':'');
         const cf=cnt.querySelector('.mind-colfilter'); if(cf) cf.onclick=()=>{ mindColFilter=null; loadMind(); };
-        if(!mindRows.length){ listEl.innerHTML='<p class="list-empty">'+(mindColFilter?'Nothing in this collection.':(status==='active'?'Nothing here yet.':'No dismissed items.'))+'</p>'; return; }
+        if(!mindRows.length){ listEl.innerHTML='<p class="list-empty">'+(mindColFilter?'Nothing in this collection.':(status==='active'?'Nothing open — everything is filed.':'Nothing filed yet.'))+'</p>'; return; }
         listEl.innerHTML=mindRows.map((r,i)=>{
-          const raw=r[tab.dateCol]||r.created_at||'';
+          const m=mindMeta(r);
+          const raw=r[m.dateCol]||r.created_at||'';
           const dd=raw?new Date(raw.length<=10?raw+'T12:00:00':raw).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
           const acts=[['edit','Edit']];
           // One quiet arrow instead of a labelled button per destination —
           // the destination is picked in the "Where to push?" sheet.
-          if((PUSH_TARGETS[tab.k]||[]).length) acts.push(['push','→']);
+          if((PUSH_TARGETS[r._kind]||[]).length) acts.push(['push','→']);
           acts.push(['collection', r.collection_id?'Move collection':'Add to collection']);
-          acts.push(mindShowDismissed?['resurface','Resurface']:['dismiss','Dismiss']);
+          acts.push(mindShowFiled?['unfile','Unfile']:['file','File']);
           acts.push(['delete','Delete']);
-          return '<div class="mind-item'+(mindShowDismissed?' dismissed':'')+'" data-i="'+i+'">'+
+          return '<div class="mind-item'+(mindShowFiled?' dismissed':'')+'" data-i="'+i+'">'+
             '<div class="mind-text" data-edit="1" title="Tap to edit">'+richDisplay(r.text||'')+'</div>'+
-            '<div class="mind-meta">'+esc(dd)+(r.collection_id&&mindColMap[r.collection_id]?' · <span class="badge col"><i class="ti ti-folder"></i> '+esc(mindColMap[r.collection_id])+'</span>':'')+(r.pushed_to_course?' · <span class="badge">Pushed to Course</span>':'')+(mindShowDismissed?' · Dismissed':'')+'</div>'+
+            '<div class="mind-meta">'+
+              '<span class="badge kind '+r._kind+'">'+esc(m.label)+'</span> · '+esc(dd)+
+              (r.collection_id&&mindColMap[r.collection_id]?' · <span class="badge col"><i class="ti ti-folder"></i> '+esc(mindColMap[r.collection_id])+'</span>':'')+
+              (r.pushed_to_course?' · <span class="badge">Pushed to Course</span>':'')+
+              (mindShowFiled?' · Filed':'')+'</div>'+
             '<div class="mind-actions">'+acts.map(([a,l])=>{
-              const cls='mind-act'+(a==='delete'||a==='dismiss'?' danger':'')+(a==='push'?' arrow':'');
+              const cls='mind-act'+(a==='delete'?' danger':'')+(a==='push'?' arrow':'');
               const extra=a==='push'?' aria-label="Push" title="Push somewhere"':'';
               return '<button class="'+cls+'"'+extra+' data-act="'+a+'">'+l+'</button>';
             }).join('')+
@@ -1611,23 +1658,49 @@
         }).join('');
         listEl.querySelectorAll('.mind-item').forEach(item=>{
           const row=mindRows[+item.dataset.i];
-          item.querySelectorAll('[data-act]').forEach(b=> b.addEventListener('click', ()=> mindAction(b.dataset.act, tab, row)));
+          item.querySelectorAll('[data-act]').forEach(b=> b.addEventListener('click', ()=> mindAction(b.dataset.act, mindMeta(row), row)));
           // Tap row text → open edit (suite convention: list rows default to edit-form).
           const txt=item.querySelector('[data-edit]');
-          if(txt) txt.addEventListener('click', ()=> editSheet(tab.table, row));
+          if(txt) txt.addEventListener('click', ()=> editSheet(mindMeta(row).table, row));
         });
       }catch(e){
         listEl.innerHTML='<p class="stub-note">Couldn’t load — '+esc(e.message)+
           '<br><br>If this mentions a missing column, the LOCKED-2026-05-18 migration in <code>supabase/schema.sql</code> hasn’t been run yet.</p>';
       }
     }
-    function mindAction(act, tab, row){
-      if(act==='edit')        return editSheet(tab.table, row);
-      if(act==='push')        return pushSheet(tab, row);
-      if(act==='collection')  return collectionSheet(tab, row);
-      if(act==='dismiss')     return setStatus(tab.table, row, 'dismissed');
-      if(act==='resurface')   return setStatus(tab.table, row, 'active');
-      if(act==='delete')      return deleteSheet(tab.table, row);
+    function mindAction(act, m, row){
+      if(act==='edit')        return editSheet(m.table, row);
+      if(act==='push')        return pushSheet(m, row);
+      if(act==='collection')  return collectionSheet(m, row);
+      if(act==='file')        return fileSheet(m, row);
+      if(act==='unfile')      return setStatus(m.table, row, 'active');
+      if(act==='delete')      return deleteSheet(m.table, row);
+    }
+    // Filing IS the triage step: an item leaves the open list, and on the way out
+    // it gets a home. Filing without a collection stays one tap away.
+    function fileSheet(m, row){
+      const here=row.collection_id;
+      const rows=mindCols.map(c=> '<div class="sheet-row" data-cid="'+esc(c.id)+'">'+
+        (c.id===here?'<i class="ti ti-check"></i> ':'')+esc(c.name)+'</div>').join('');
+      showModal('<h4>File it</h4>'+
+        '<p class="stub-note" style="padding:2px 0 12px">Out of the open list. Still searchable, still resurfaces.</p>'+
+        rows+
+        '<div class="sheet-row" data-new="1"><i class="ti ti-plus"></i> New collection…</div>'+
+        '<div class="sheet-row" data-plain="1"><i class="ti ti-archive"></i> File without a collection</div>', ()=>{
+        document.querySelectorAll('#modal-sheet .sheet-row').forEach(el=> el.addEventListener('click', async ()=>{
+          try{
+            let cid=here;
+            if(el.dataset.new){
+              const name=prompt('New collection name'); if(!name||!name.trim()) return;
+              cid=await findOrCreateCollection(name.trim());
+            } else if(el.dataset.cid){ cid=el.dataset.cid; }
+            const patch={ status:'dismissed' };
+            if(cid!==here) patch.collection_id=cid||null;
+            await sbFetch(m.table+'?id=eq.'+row.id,{method:'PATCH',body:JSON.stringify(patch)});
+            hideModal(); showToast('Filed'); loadMind();
+          }catch(e){ showToast('Filing failed — '+e.message); }
+        }));
+      });
     }
     // In-place text edit (Thoughts / Insights / Mantras). PATCH text only;
     // status/source_entry_id unchanged. Editing a dismissed row keeps it dismissed.
@@ -1654,19 +1727,19 @@
     // Where a row can go from each tab. Drives both the arrow's presence and the
     // sheet's options — nothing else needs to know the routes.
     const PUSH_TARGETS={
-      thoughts: [['insights','Insights'], ['mantras','Mantras']],
-      insights: [['mantras','Mantras']],
+      thought: [['insights','Insights'], ['mantras','Mantras']],
+      insight: [['mantras','Mantras']],
     };
-    function pushSheet(tab, row){
-      const targets=PUSH_TARGETS[tab.k]||[]; if(!targets.length) return;
+    function pushSheet(m, row){
+      const targets=PUSH_TARGETS[m.etype]||[]; if(!targets.length) return;
       showModal('<h4>Where to push?</h4>'+
-        '<p class="stub-note" style="padding:2px 0 14px">Moves it out of '+esc(tab.label)+'.</p>'+
+        '<p class="stub-note" style="padding:2px 0 14px">Moves it out of '+esc(m.plural)+'.</p>'+
         targets.map(([t,l])=> '<button class="btn btn-secondary push-target" data-t="'+t+'" style="width:100%;margin-bottom:8px">'+l+'</button>').join('')+
         '<button class="btn btn-secondary" id="sheet-cancel" style="width:100%">Cancel</button>', ()=>{
         document.getElementById('sheet-cancel').addEventListener('click', hideModal);
         document.querySelectorAll('.push-target').forEach(b=> b.addEventListener('click', ()=>{
           const [t,l]=targets.find(x=> x[0]===b.dataset.t);
-          hideModal(); setTimeout(()=> promoteSheet(tab.table, row, t, l), 60);
+          hideModal(); setTimeout(()=> promoteSheet(m.table, row, t, l), 60);
         }));
       });
     }
@@ -1681,6 +1754,8 @@
           const txt=richGet(document.getElementById('pm-text')); if(!richPlain(txt).trim()) return;
           try{
             const body={ text:txt, status:'active' };
+            // Collections are flat now, so a move keeps its collection.
+            if(row.collection_id) body.collection_id=row.collection_id;
             if(toTable==='insights') body.source_entry_id=row.source_entry_id||null; // migration adds this col
             await sbFetch(toTable,{method:'POST',body:JSON.stringify(body)});
             await sbFetch(fromTable+'?id=eq.'+row.id,{method:'DELETE'});
@@ -1710,15 +1785,16 @@
     // One collection per entry (collection_id FK). Suggestion-on-write proposes a
     // name from content; the user confirms. Manual assign/reassign via the action
     // sheet; the header panel lists/filters/renames/deletes.
-    async function findOrCreateCollection(etype, name){
+    // Flat since 2026-07-31: one namespace, no per-type scoping. `entry_type` is
+    // written as 'any' purely so the older MCP rows and this one look the same.
+    async function findOrCreateCollection(name){
       name=(name||'').trim(); if(!name) return null;
-      // Reuse a same-type collection when the name matches (case-insensitive).
-      const local=(mindCols||[]).find(c=> c.entry_type===etype && c.name.toLowerCase()===name.toLowerCase());
+      const local=(mindCols||[]).find(c=> c.name.toLowerCase()===name.toLowerCase());
       if(local) return local.id;
-      const hit=(await sbFetch('collections?entry_type=eq.'+etype+'&name=ilike.'+encodeURIComponent(name)) || [])[0];
+      const hit=(await sbFetch('collections?name=ilike.'+encodeURIComponent(name)) || [])[0];
       if(hit) return hit.id;
       const rows=await sbFetch('collections',{method:'POST',prefer:'return=representation',
-        body:JSON.stringify({name, entry_type:etype})});
+        body:JSON.stringify({name, entry_type:'any'})});
       return rows?.[0]?.id||null;
     }
     function assignCollection(table, rowId, collectionId){
@@ -1730,7 +1806,7 @@
     async function suggestCollection(table, etype, rowId, text){
       if(!hasSession()) return;
       try{
-        const names=(await sbFetch('collections?entry_type=eq.'+etype+'&select=name&order=name.asc') || []).map(c=> c.name);
+        const names=(await sbFetch('collections?select=name&order=name.asc') || []).map(c=> c.name);
         const r=await callClaude(
           'You sort short personal '+etype+' notes into thematic collections. Given a new note and the existing '+
           'collection names, choose the single best collection: reuse an existing name VERBATIM if the note clearly '+
@@ -1752,7 +1828,7 @@
         document.getElementById('sheet-cancel').addEventListener('click', hideModal);
         document.getElementById('sheet-primary').addEventListener('click', async ()=>{
           try{
-            const cid=await findOrCreateCollection(etype, name);
+            const cid=await findOrCreateCollection(name);
             if(cid) await assignCollection(table, rowId, cid);
             hideModal(); showToast('Added to “'+name+'”');
             if(document.querySelector('.screen.active')?.id==='screen-mind') loadMind();
@@ -1761,9 +1837,9 @@
       });
     }
     // Manual assign / reassign / remove for a single entry.
-    async function collectionSheet(tab, row){
+    async function collectionSheet(m, row){
       let cols=mindCols;
-      if(!cols || !cols.length) cols=await sbFetch('collections?entry_type=eq.'+tab.etype+'&order=name.asc') || [];
+      if(!cols || !cols.length) cols=await sbFetch('collections?order=name.asc') || [];
       const rows=cols.map(c=> '<div class="sheet-row" data-cid="'+esc(c.id)+'">'+
           (c.id===row.collection_id?'<i class="ti ti-check"></i> ':'')+esc(c.name)+'</div>').join('');
       showModal('<h4>Collection</h4>'+
@@ -1774,12 +1850,12 @@
           try{
             if(el.dataset.new){
               const name=prompt('New collection name'); if(!name||!name.trim()) return;
-              const cid=await findOrCreateCollection(tab.etype, name.trim());
-              await assignCollection(tab.table, row.id, cid);
+              const cid=await findOrCreateCollection(name.trim());
+              await assignCollection(m.table, row.id, cid);
             } else if(el.dataset.remove){
-              await assignCollection(tab.table, row.id, null);
+              await assignCollection(m.table, row.id, null);
             } else {
-              await assignCollection(tab.table, row.id, el.dataset.cid);
+              await assignCollection(m.table, row.id, el.dataset.cid);
             }
             hideModal(); showToast('Updated'); loadMind();
           }catch(e){ showToast('Failed — '+e.message); }
@@ -1789,10 +1865,10 @@
     // Header panel — every collection for the current type with entry counts; tap a
     // name to filter the list, rename or delete inline (delete keeps entries; FK set null).
     async function openCollectionsPanel(){
-      const tab=MIND_TABS.find(t=> t.k===mindTab);
-      const cols=await sbFetch('collections?entry_type=eq.'+tab.etype+'&order=name.asc') || [];
-      const all=await sbFetch(tab.table+'?select=collection_id&limit=1000') || [];
-      const counts={}; all.forEach(r=>{ if(r.collection_id) counts[r.collection_id]=(counts[r.collection_id]||0)+1; });
+      const cols=await sbFetch('collections?order=name.asc') || [];
+      // Counts span all three types — a collection is one thing now, not three.
+      const sets=await Promise.all(MIND_ORDER.map(k=> sbFetch(MIND_KINDS[k].table+'?select=collection_id&limit=1000')));
+      const counts={}; sets.flat().forEach(r=>{ if(r&&r.collection_id) counts[r.collection_id]=(counts[r.collection_id]||0)+1; });
       const body=cols.length? cols.map(c=>
         '<div class="sheet-row col-row">'+
           '<span class="col-name" data-cid="'+esc(c.id)+'">'+esc(c.name)+'</span>'+
@@ -1800,8 +1876,8 @@
             '<span class="col-ren" data-cid="'+esc(c.id)+'" data-name="'+esc(c.name)+'">rename</span> · '+
             '<span class="col-del danger" data-cid="'+esc(c.id)+'" data-name="'+esc(c.name)+'">delete</span></span>'+
         '</div>').join('')
-        : '<p class="stub-note" style="padding:6px 0">No '+tab.label.toLowerCase()+' collections yet. They form as you capture.</p>';
-      showModal('<h4>'+tab.label+' collections</h4>'+
+        : '<p class="stub-note" style="padding:6px 0">No collections yet. They form as you capture.</p>';
+      showModal('<h4>Collections</h4>'+
         (mindColFilter?'<div class="sheet-row" data-all="1"><i class="ti ti-list"></i> Show all</div>':'')+body, ()=>{
         document.querySelectorAll('#modal-sheet .col-name').forEach(el=> el.addEventListener('click', ()=>{
           mindColFilter=el.dataset.cid; hideModal(); loadMind();
@@ -1829,9 +1905,13 @@
     // ════ STOIC ════
     let stoicType='morning', stoicPrompts=[];
     function initStoic(){
+      // Fear Setting sits with the practices but is a guided screen of its own —
+      // the chip navigates instead of swapping the prompt set.
       document.getElementById('stoic-type-row').innerHTML=Object.entries(STOIC_PRACTICES).map(([k,v])=>
-        '<button class="stoic-type-btn'+(k===stoicType?' active':'')+'" data-st="'+k+'">'+v.label+'</button>').join('');
-      document.querySelectorAll('.stoic-type-btn').forEach(b=> b.addEventListener('click', ()=>{ stoicType=b.dataset.st; initStoic(); }));
+        '<button class="stoic-type-btn'+(k===stoicType?' active':'')+'" data-st="'+k+'">'+v.label+'</button>').join('')+
+        '<button class="stoic-type-btn" data-goto="fear">Fear Setting</button>';
+      document.querySelectorAll('.stoic-type-btn[data-goto]').forEach(b=> b.addEventListener('click', ()=> navigate('fear','right')));
+      document.querySelectorAll('.stoic-type-btn[data-st]').forEach(b=> b.addEventListener('click', ()=>{ stoicType=b.dataset.st; initStoic(); }));
       stoicPrompts=STOIC_PRACTICES[stoicType].prompts.slice();
       renderStoicPrompts();
     }
@@ -1878,6 +1958,115 @@
       }catch(e){ showToast('Save failed — '+e.message); }
     }
     document.getElementById('stoic-save').addEventListener('click', saveStoic);
+
+    // ════ FEAR SETTING — Tim Ferriss's exercise, walked one prompt at a time ════
+    // Deliberately NOT the all-prompts-on-one-page shape the three Stoic practices
+    // use: the point of the exercise is that each answer is written before the next
+    // question is seen. The AI read is opt-in and only after the last step, so it
+    // can't steer the answers while they're still being written.
+    const FEAR_STEPS=[
+      { q:'What if I…?', hint:'Name the one thing you are putting off. The action, the conversation, the change — say it plainly.' },
+      { q:'Define the worst.', hint:'If you did it, what are the worst things that could happen? Write them out. Be concrete, not vague.' },
+      { q:'How likely is each one, really?', hint:'Rate them 1–10. Most fears do not survive being given a number.' },
+      { q:'Prevent.', hint:'What could you do to stop each of those happening, or make it far less likely?' },
+      { q:'Repair.', hint:'If the worst did happen, what could you do to get back on your feet? Who has done this before you could ask?' },
+      { q:'Benefits of an attempt.', hint:'What would you gain even from a partial success? Skills, confidence, information, a door opened.' },
+      { q:'The cost of inaction — 6 months.', hint:'If you avoid this, what does the next six months cost you? Emotionally, physically, financially.' },
+      { q:'The cost of inaction — 1 year.', hint:'Same question, further out. Where does this put you in twelve months?' },
+      { q:'The cost of inaction — 3 years.', hint:'And in three years. This is usually the one that moves people.' },
+    ];
+    const FEAR_DRAFT='ink_fear_draft';
+    let fearIdx=0, fearAns=FEAR_STEPS.map(()=> ''), fearRead='';
+    function fearSaveDraft(){
+      try{ localStorage.setItem(FEAR_DRAFT, JSON.stringify({ idx:fearIdx, ans:fearAns, read:fearRead })); }catch{}
+    }
+    function fearLoadDraft(){
+      try{
+        const d=JSON.parse(localStorage.getItem(FEAR_DRAFT)||'null');
+        if(d && Array.isArray(d.ans) && d.ans.length===FEAR_STEPS.length){ fearIdx=d.idx||0; fearAns=d.ans; fearRead=d.read||''; return true; }
+      }catch{}
+      return false;
+    }
+    function fearReset(){ fearIdx=0; fearAns=FEAR_STEPS.map(()=> ''); fearRead=''; try{ localStorage.removeItem(FEAR_DRAFT); }catch{} }
+    function openFear(){ fearLoadDraft(); renderFear(); }
+    function fearDots(active){
+      return '<div class="fear-dots">'+FEAR_STEPS.map((_,i)=>
+        '<div class="fear-dot'+(i===active?' now':(fearAns[i].trim()?' done':''))+'"></div>').join('')+'</div>';
+    }
+    function renderFear(){
+      const el=document.getElementById('fear-body');
+      if(fearIdx>=FEAR_STEPS.length) return renderFearReview();
+      const s=FEAR_STEPS[fearIdx];
+      el.innerHTML='<div class="fear-step">Step '+(fearIdx+1)+' of '+FEAR_STEPS.length+'</div>'+
+        fearDots(fearIdx)+
+        '<div class="fear-q">'+esc(s.q)+'</div>'+
+        '<div class="fear-hint">'+esc(s.hint)+'</div>'+
+        '<div class="input rich" id="fear-a" data-ph="Write it out…" style="min-height:170px"></div>'+
+        '<div class="fear-nav">'+
+          (fearIdx>0?'<button class="btn btn-secondary" id="fear-prev" style="flex:1">Back</button>':'')+
+          '<button class="btn btn-primary" id="fear-next" style="flex:2">'+(fearIdx===FEAR_STEPS.length-1?'Review':'Next')+'</button>'+
+        '</div>';
+      const box=richEditor(document.getElementById('fear-a'));
+      richSet(box, fearAns[fearIdx]||'');
+      setTimeout(()=>{ box.focus(); placeCaretEnd(box); }, 60);
+      const commit=()=>{ fearAns[fearIdx]=richGet(box); fearSaveDraft(); };
+      box.addEventListener('input', commit);
+      const prev=document.getElementById('fear-prev');
+      // Save AFTER moving, not just on typing — resuming should land on the step
+      // you walked away from, not the last one you typed in.
+      if(prev) prev.addEventListener('click', ()=>{ commit(); fearIdx--; fearSaveDraft(); renderFear(); });
+      document.getElementById('fear-next').addEventListener('click', ()=>{ commit(); fearIdx++; fearSaveDraft(); renderFear(); });
+    }
+    function renderFearReview(){
+      const el=document.getElementById('fear-body');
+      const written=FEAR_STEPS.map((s,i)=> ({ s, a:richPlain(fearAns[i]).trim() })).filter(p=> p.a);
+      el.innerHTML='<div class="fear-step">Review</div>'+fearDots(-1)+
+        (written.length? written.map(p=>
+          '<div class="fear-review-q">'+esc(p.s.q)+'</div><div class="fear-review-a">'+esc(p.a)+'</div>').join('')
+          : '<p class="list-empty">Nothing written yet.</p>')+
+        (fearRead?'<div class="fear-step" style="margin-top:6px">The read</div><div class="fear-read">'+esc(fearRead)+'</div>':'')+
+        '<div class="fear-nav"><button class="btn btn-secondary" id="fear-prev" style="flex:1">Back</button>'+
+        '<button class="btn btn-secondary" id="fear-ai" style="flex:1">'+(fearRead?'Read again':'Ask for a read')+'</button></div>'+
+        '<button class="btn btn-primary" id="fear-save" style="width:100%;margin-top:8px">Save reflection</button>';
+      document.getElementById('fear-prev').addEventListener('click', ()=>{ fearIdx=FEAR_STEPS.length-1; renderFear(); });
+      document.getElementById('fear-ai').addEventListener('click', fearAskRead);
+      document.getElementById('fear-save').addEventListener('click', saveFear);
+    }
+    function fearBody(){
+      return FEAR_STEPS.map((s,i)=> ({ s, a:richPlain(fearAns[i]).trim() })).filter(p=> p.a)
+        .map(p=> 'Q: '+p.s.q+'\nA: '+p.a).join('\n\n');
+    }
+    async function fearAskRead(){
+      if(!requireApiKey('A read on your fear-setting needs an Anthropic API key.')) return;
+      const body=fearBody(); if(!body) return showToast('Nothing to read yet');
+      const btn=document.getElementById('fear-ai'); const was=btn.textContent; btn.textContent='Reading…'; btn.disabled=true;
+      try{
+        const r=await callClaude(
+          'This is a completed Tim Ferriss fear-setting exercise from a personal journal. Give a short, direct read of it — '+
+          'three or four sentences, no preamble, no therapy voice, no flattery. Point at the specific thing: whether the '+
+          'worst case is actually survivable given what they wrote, whether the prevent/repair answers are concrete enough '+
+          'to act on, and which line carries the most weight. If the cost of inaction clearly outweighs the risk, say so plainly.\n\n'+
+          body+'\n\nReturn JSON: { "read": "" }');
+        fearRead=(r&&r.read||'').trim(); fearSaveDraft(); renderFearReview();
+      }catch(e){ btn.textContent=was; btn.disabled=false; showToast('Read failed — '+e.message); }
+    }
+    async function saveFear(){
+      const body=fearBody(); if(!body) return showToast('Nothing to save');
+      const text=body+(fearRead?'\n\n--- The read ---\n'+fearRead:'');
+      const raw=FEAR_STEPS.map((_,i)=> richPlain(fearAns[i]).trim()).filter(Boolean).join('\n\n');
+      try{
+        const ent=await sbFetch('entries',{method:'POST',prefer:'return=representation',
+          body:JSON.stringify({raw_text:raw, primary_type:'reflection', source_surface:'stoic_screen'})});
+        await sbFetch('reflections',{method:'POST',
+          body:JSON.stringify({source_entry_id:ent?.[0]?.id||null, text, tags:['stoic','fear-setting'], prompt_used:'Fear Setting', date:today()})});
+        fearReset(); showToast('Saved'); goBack();
+      }catch(e){ showToast('Save failed — '+e.message); }
+    }
+    document.getElementById('fear-back').addEventListener('click', ()=> goBack());
+    document.getElementById('fear-restart').addEventListener('click', ()=>{
+      if(!confirm('Start over? The current answers are cleared.')) return;
+      fearReset(); renderFear();
+    });
 
     // ════ Settings / API key ════
     document.getElementById('apikey-save').addEventListener('click', ()=>{
@@ -1987,11 +2176,12 @@
       maybeHideLpHint();
       // Deeplink: `?screen=<id>` (+ `&stoic=` / capture `&text=` handoff).
       const params = new URLSearchParams(location.search);
-      const target = params.get('screen');
+      let target = params.get('screen');
       if (target) {
         if (target === 'stoic') {
           const t = params.get('stoic');
           if (t === 'morning' || t === 'evening' || t === 'premeditatio') stoicType = t;
+          if (t === 'fear') target = 'fear';   // ?screen=stoic&stoic=fear → the guided screen
         }
         navigate(target);
         if (target === 'capture') {

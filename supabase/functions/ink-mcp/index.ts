@@ -65,6 +65,7 @@ const MIND = {
   mantra:  { table: 'mantras',  dateCol: 'created_at' },
 } as const
 type MindKind = keyof typeof MIND
+const MIND_TABLES = Object.values(MIND).map((m) => m.table)
 
 const ALL_KINDS = ['thought', 'insight', 'mantra', 'reflection', 'day', 'restaurant', 'media']
 
@@ -190,19 +191,22 @@ const ops: Record<string, (sb: any, a: any) => Promise<any>> = {
     return (data || []).map(shape.media)
   },
 
+  // Collections are FLAT since 2026-07-31 — one collection spans all three Mind
+  // kinds, so counts sum across the three tables. `kind` now filters the COUNT
+  // (how much of that kind is in each collection), not which collections exist.
   async list_collections(sb, { kind }) {
-    let q = sb.from('collections').select('*').order('updated_at', { ascending: false })
-    if (kind) q = q.eq('entry_type', kind)
-    const { data, error } = await q; must(error)
+    const { data, error } = await sb.from('collections').select('*').order('updated_at', { ascending: false })
+    must(error)
     const cols = data || []
-    // attach member counts per collection
+    const tables = (kind ? [MIND[kind as MindKind]?.table] : MIND_TABLES).filter(Boolean) as string[]
     const counts = await Promise.all(cols.map(async (c: any) => {
-      const t = MIND[c.entry_type as MindKind]?.table
-      if (!t) return 0
-      const { count } = await sb.from(t).select('id', { count: 'exact', head: true }).eq('collection_id', c.id)
-      return count || 0
+      const per = await Promise.all(tables.map(async (t) => {
+        const { count } = await sb.from(t).select('id', { count: 'exact', head: true }).eq('collection_id', c.id)
+        return count || 0
+      }))
+      return per.reduce((a, b) => a + b, 0)
     }))
-    return cols.map((c: any, i: number) => ({ id: c.id, name: c.name, kind: c.entry_type, count: counts[i] }))
+    return cols.map((c: any, i: number) => ({ id: c.id, name: c.name, count: counts[i] }))
   },
 
   // ---------- write ----------
@@ -298,12 +302,16 @@ const ops: Record<string, (sb: any, a: any) => Promise<any>> = {
     return { id, kind, ...patch }
   },
 
-  async create_collection(sb, { name, kind }) {
+  // Flat namespace — a collection holds any mix of thoughts, insights and
+  // mantras, so no kind is taken. Reuses an existing name instead of splitting it.
+  async create_collection(sb, { name }) {
     if (!name?.trim()) throw new Error('name is required')
-    if (!MIND[kind as MindKind]) throw new Error("kind must be one of: thought, insight, mantra")
+    const clean = name.trim()
+    const { data: hit } = await sb.from('collections').select('id,name').ilike('name', clean).limit(1)
+    if (hit && hit[0]) return { id: hit[0].id, name: hit[0].name, existing: true }
     const id = uuid()
-    const { error } = await sb.from('collections').insert({ id, name, entry_type: kind }); must(error)
-    return { id, name, kind }
+    const { error } = await sb.from('collections').insert({ id, name: clean, entry_type: 'any' }); must(error)
+    return { id, name: clean }
   },
 }
 
@@ -324,7 +332,7 @@ const TOOLS = [
   { name: 'list_reflections', write: false, description: 'List Stoic/reflect entries, optionally filtered by date range or the prompt used.', inputSchema: S({ from: DATE, to: DATE, prompt: str, limit: num }) },
   { name: 'list_meals', write: false, description: 'List restaurant visits, optionally filtered by date range or place name.', inputSchema: S({ from: DATE, to: DATE, place: str, limit: num }) },
   { name: 'list_media', write: false, description: 'List film/tv/book/podcast entries, optionally filtered by format, minimum rating, or date range.', inputSchema: S({ format: { type: 'string', enum: ['film', 'tv', 'book', 'podcast', 'other'] }, minRating: num, from: DATE, to: DATE, limit: num }) },
-  { name: 'list_collections', write: false, description: 'List Collections (auto-named thematic groupings) with member counts.', inputSchema: S({ kind: KIND }) },
+  { name: 'list_collections', write: false, description: 'List Collections (auto-named thematic groupings) with member counts. Collections are flat — one collection can hold thoughts, insights and mantras together. Pass kind to count only that kind.', inputSchema: S({ kind: KIND }) },
 
   { name: 'capture', write: true, description: 'Write a new thought, insight, or mantra into Ink. Only use when explicitly asked to save something — this is a personal journal, not a scratchpad.', inputSchema: S({ kind: KIND, text: str, date: DATE }, ['kind', 'text']) },
   { name: 'log_day', write: true, description: "Write a day log entry — the one-line prose record of a day.", inputSchema: S({ text: str, date: DATE }, ['text']) },
@@ -332,7 +340,7 @@ const TOOLS = [
   { name: 'log_media', write: true, description: 'Log something watched, read, or listened to. rating is 1-5.', inputSchema: S({ title: str, format: { type: 'string', enum: ['film', 'tv', 'book', 'podcast', 'other'] }, date: DATE, rating: num, note: str }, ['title', 'format']) },
   { name: 'log_reflection', write: true, description: 'Write a reflection entry, optionally recording the prompt it answered.', inputSchema: S({ text: str, prompt: str, tags: arr, date: DATE }, ['text']) },
   { name: 'update_mind', write: true, description: 'Adjust an existing thought/insight/mantra: change status (active|dismissed), assign a collection, correct the text, or promote it to another kind via promoteTo (dismisses the original).', inputSchema: S({ kind: KIND, id: str, status: str, collection: str, text: str, promoteTo: KIND }, ['kind', 'id']) },
-  { name: 'create_collection', write: true, description: 'Create a named Collection for one entry kind.', inputSchema: S({ name: str, kind: KIND }, ['name', 'kind']) },
+  { name: 'create_collection', write: true, description: 'Create a named Collection. Collections are flat — they hold any mix of thoughts, insights and mantras. Returns the existing one if the name is already taken.', inputSchema: S({ name: str }, ['name']) },
 ].filter((t) => !(READONLY && t.write))
 
 // ── build a user-scoped supabase client from the stored session ──

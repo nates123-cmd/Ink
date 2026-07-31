@@ -121,10 +121,13 @@ create index if not exists idx_insights_status on insights(status, created_at de
 -- (user_id default auth.uid(), auth.uid() = user_id). One collection per entry
 -- (nullable FK, on delete set null). Spec: /ink Collections feature.
 -- ─────────────────────────────────────────────────────────────────────────────
+-- FLATTENED 2026-07-31: entry_type is no longer a scope, just a legacy label.
+-- New rows are 'any' and one collection is shared by thoughts/insights/mantras.
+-- See supabase/migrations/mind_flat_collections.sql for the merge of old rows.
 create table if not exists collections (
   id          uuid        primary key default gen_random_uuid(),
   name        text        not null,
-  entry_type  text        not null check (entry_type in ('thought','insight','mantra')),
+  entry_type  text        default 'any',
   user_id     uuid        default auth.uid(),
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
