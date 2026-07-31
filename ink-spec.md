@@ -55,6 +55,18 @@ Edge labels: `▲ CAPTURE` / `JOURNAL ▼` / `◀ STOIC` / `MIND ▶`. Long-pres
 
 Full-screen serif textarea, placeholder *"What's on your mind?"*, date/time line, Home + `×` controls, ⌘/Ctrl+Enter to save. Save → one `entries` row (`primary_type='thought'`, `source_surface='thoughts_screen'`) + one `thoughts` row (`status='active'`); return home.
 
+### Rich entry surfaces — notepad-lite (added 2026-07-31)
+
+Entry surfaces are `contenteditable` divs, not textareas: Capture, the Journal day-log card, the day backfill sheet, and the Mind edit/move sheets. Formatting is **keyboard-only — there is no toolbar and no markdown syntax on screen**.
+
+- ⌘/Ctrl+**B** bold · **I** italic · **U** underline · ⌘⇧**8** bullets · ⌘⇧**7** numbers
+- `- ` or `* ` at the start of a line becomes a bullet list; Enter continues it, Enter on an empty bullet leaves it
+- Paste is forced to plain text so foreign styling never enters a record
+
+**Storage.** The type-specific record (`thoughts.text`, `day_logs.text`, …) holds a small allowlisted HTML subset — `b strong i em u ul ol li br div p`, no attributes. `entries.raw_text`, every Claude prompt, and the MiniSearch index get the **plain-text** projection (`richPlain`, bullets flattened to `• `). Rows written as plain text — by the MCP function, or before this change — render and edit unchanged; nothing was migrated. All display paths run `richDisplay`, which sanitizes through `DOMParser` and escapes anything outside the allowlist.
+
+**Structure rule.** Each line lives in its own block and an empty editor is seeded with `<div><br></div>`. Without that, `insertUnorderedList` swallows every line above the caret.
+
 ### Journal (swipe down) — day surface + timeline
 
 Top→bottom: (1) habit pill strip (toggles `habit_logs`); (2) today's day-log editor card with live entity-extraction tags + the "Open · not yet logged" backfill list; (3) filter chips `All / Days / Restaurants / Media / Thoughts / Reflections`; (4) the unified timeline. Everything the old Today screen did lives at the top of Journal; the rest is the existing read timeline.
@@ -63,11 +75,13 @@ Top→bottom: (1) habit pill strip (toggles `habit_logs`); (2) today's day-log e
 
 Tabs **Thoughts · Insights · Mantras**. Each lists `status='active'` rows newest-first; a Dismissed toggle reveals `status='dismissed'`.
 
-- **Thoughts** row: Edit · → Insight · → Mantra · Push to Course · Dismiss · Delete (Resurface if dismissed)
-- **Insights** row: Edit · → Mantra · Push to Course · Dismiss · Delete
-- **Mantras** row: Edit · Push to Course · Dismiss · Delete
+- **Thoughts** row: Edit · → · Add to collection · Dismiss · Delete (Resurface if dismissed)
+- **Insights** row: Edit · → · Add to collection · Dismiss · Delete
+- **Mantras** row: Edit · Add to collection · Dismiss · Delete
 
 **Edit (added 2026-05-26).** Every Mind row supports in-place edit of its `text`. Two equivalent entry points: (a) the **Edit** action button at the head of the action row, and (b) **tap the row text itself** (`mind-text`) — follows the suite convention that "Today/list rows default to edit-form, not view-then-edit" ([[feedback_today_logs_editable]]). Both open a modal with a textarea pre-filled with the current text; Save → `PATCH <table>?id=eq.<id> { text }`. No schema change. Editing is allowed in both `active` and `dismissed` states; editing a dismissed row keeps it dismissed.
+
+**One arrow, not a button per destination (added 2026-07-31).** The labelled `→ Insight` / `→ Mantra` buttons read as clutter on every row. Replaced by a single quiet **→** action; tapping it opens a **"Where to push?"** sheet listing the destinations for that tab (Thoughts → Insights / Mantras; Insights → Mantras; Mantras → none, so no arrow). Picking one opens the existing move-confirm. Routes live in one `PUSH_TARGETS` map — the arrow's presence and the sheet's options both read from it.
 
 **Move = move, not copy.** Promote = insert into the target table carrying `text` + `source_entry_id`, then delete the source row — a promoted thought leaves Thoughts and appears under Insights, etc. The shared `mantras` (feeds home + Break) and Still's `insights` stay the system of record so existing integrations keep working. Promote opens a one-field confirm allowing a light text edit before the move. **Dismiss** → `status='dismissed'` (reversible). **Resurface** → `status='active'`. **Delete** → row removed (single confirm).
 
@@ -803,4 +817,4 @@ Same design grammar as the rest of the suite: single column, generous gutters, b
 
 ---
 
-*Last updated: May 26, 2026 — Added F5 (opt-in dark mode) and Mind row Edit action. Successor to Still — replaces Still entirely.*
+*Last updated: July 31, 2026 — Rich entry surfaces (keyboard-only bold/italic/underline/bullets) and the Mind "Where to push?" arrow. Successor to Still — replaces Still entirely.*

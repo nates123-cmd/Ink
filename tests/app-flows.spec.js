@@ -47,7 +47,7 @@ test('extracting a new day log persists extracted_entities after creating the ro
   await boot(page);
 
   const calls = await page.evaluate(async () => {
-    document.getElementById('log-text').value = "Dinner at Raoul's";
+    richSet(document.getElementById('log-text'), "Dinner at Raoul's");
     await extractTodayLog();
     return window.__sbCalls;
   });

@@ -85,7 +85,7 @@
       -webkit-tap-highlight-color: transparent;
     }
     /* Opt selection back in only where the user's own words live. */
-    input, textarea, .entry-prose, .entry-note, .entry-thought, .entry-headline, .entry-meta {
+    input, textarea, .rich, [contenteditable], .entry-prose, .entry-note, .entry-thought, .entry-headline, .entry-meta {
       -webkit-user-select: text; user-select: text;
     }
 
@@ -209,8 +209,15 @@
     .compose-area { padding: 22px 24px 110px; flex: 1; display: flex; flex-direction: column; }
     .date-line { font-size: 11px; color: var(--whisper); margin-top: auto; padding-top: 14px; }
     .date-line .dot { color: var(--whisper); margin: 0 6px; }
-    textarea.compose { width: 100%; border: none; outline: none; resize: none; background: transparent; font-family: var(--serif); font-size: 17px; line-height: 1.6; color: var(--text); min-height: 240px; flex: 1; }
-    textarea.compose::placeholder { color: var(--whisper); font-style: italic; }
+    .compose { width: 100%; border: none; outline: none; resize: none; background: transparent; font-family: var(--serif); font-size: 17px; line-height: 1.6; color: var(--text); min-height: 240px; flex: 1; }
+    /* Rich (contenteditable) entry surfaces — keyboard-only formatting, no toolbar. */
+    .rich { position: relative; white-space: pre-wrap; word-break: break-word; -webkit-user-select: text; user-select: text; }
+    /* Placeholder is absolute — the editor always holds one empty block for the caret. */
+    .rich.is-empty::before { content: attr(data-ph); position: absolute; top: 0; left: 0; color: var(--whisper); font-style: italic; pointer-events: none; }
+    .rich ul, .rich ol, .entry-prose ul, .entry-prose ol, .entry-thought ul, .entry-thought ol, .mind-text ul, .mind-text ol { margin: 4px 0; padding-left: 20px; }
+    .rich li, .entry-prose li, .entry-thought li, .mind-text li { margin: 2px 0; }
+    .entry-prose, .entry-thought { white-space: pre-wrap; }
+    .rich u { text-underline-offset: 2px; }
     .bottom-bar { position: absolute; bottom: 0; left: 0; right: 0; padding: 14px 22px calc(22px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 70%, transparent); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
     .meta-text { font-size: 11px; color: var(--whisper); letter-spacing: .5px; }
     .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; border-radius: 999px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; }
@@ -233,8 +240,7 @@
     .date-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
     .date-prefix { font-family: var(--serif); font-size: 22px; font-weight: 500; color: var(--accent); }
     .date-meta { font-size: 12px; color: var(--whisper); text-transform: lowercase; letter-spacing: .5px; }
-    textarea.log-text { width: 100%; border: none; outline: none; resize: none; background: transparent; font-family: var(--serif); font-size: 16px; line-height: 1.6; color: var(--text); min-height: 110px; }
-    textarea.log-text::placeholder { color: var(--whisper); font-style: italic; }
+    .log-text { width: 100%; border: none; outline: none; resize: none; background: transparent; font-family: var(--serif); font-size: 16px; line-height: 1.6; color: var(--text); min-height: 110px; }
     .tags { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 16px; padding-top: 14px; border-top: .5px solid var(--border); font-size: 12px; color: var(--muted); }
     .tags:empty { display: none; }
     .tag { display: inline-flex; align-items: center; gap: 5px; }
@@ -278,13 +284,15 @@
     .mind-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
     .mind-act { font-size: 12px; padding: 5px 11px; border-radius: 999px; border: .5px solid var(--border); background: transparent; color: var(--accent); cursor: pointer; }
     .mind-act.danger { color: var(--muted); }
+    .mind-act.arrow { padding: 5px 13px; font-size: 13px; line-height: 1.15; color: var(--accent); }
 
     /* ── Generic content / forms ── */
     .pad { padding: 0 22px 24px; flex: 1; overflow-y: auto; }
     .field-block { margin-bottom: 18px; }
     .field-block label { display: block; font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
     .input, textarea.input { width: 100%; padding: 12px 14px; border: .5px solid var(--border); border-radius: 12px; background: var(--card-bg); color: var(--text); font-family: var(--sans); font-size: 15px; outline: none; }
-    textarea.input { font-family: var(--serif); line-height: 1.6; resize: vertical; min-height: 160px; }
+    textarea.input, .rich.input { font-family: var(--serif); line-height: 1.6; resize: vertical; min-height: 160px; }
+    .rich.input { overflow-y: auto; max-height: 46vh; }
     .prompt-banner { background: var(--card-bg); border: .5px solid var(--border); border-radius: 12px; padding: 14px 16px; font-family: var(--serif); font-style: italic; color: var(--text-soft); font-size: 14.5px; line-height: 1.5; margin-bottom: 16px; }
     .stoic-type-row { display: flex; gap: 8px; padding: 0 0 16px; }
     .stoic-type-btn { flex: 1; padding: 10px 8px; border-radius: 10px; border: .5px solid var(--border); background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; }
@@ -359,7 +367,7 @@
       </div>
     </div>
     <div class="compose-area">
-      <textarea class="compose" id="capture-text" placeholder="What's on your mind?"></textarea>
+      <div class="compose rich" id="capture-text" data-ph="What's on your mind?" role="textbox" aria-multiline="true"></div>
       <div class="date-line" id="capture-date">—</div>
     </div>
     <div class="bottom-bar">
@@ -382,7 +390,7 @@
           <span class="date-prefix" id="log-date-prefix">—</span>
           <span class="date-meta" id="log-date-meta">—</span>
         </div>
-        <textarea class="log-text" id="log-text" placeholder="What happened today?"></textarea>
+        <div class="log-text rich" id="log-text" data-ph="What happened today?" role="textbox" aria-multiline="true"></div>
         <div class="tags" id="log-tags"></div>
         <div class="status" id="log-status"></div>
       </div>
@@ -631,6 +639,124 @@
     function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
     function fmtDate(ts){ return new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
     function arr(x){ return Array.isArray(x) ? x : (x ? [x] : []); }
+
+    // ── Rich text (notepad-lite) ──
+    // Entry surfaces are contenteditable, not textareas. Formatting is
+    // keyboard-only by design — no visible toolbar. Stored value is a small
+    // allowlisted HTML subset; anything written by the MCP function (or by the
+    // old textarea era) is plain text and still renders correctly.
+    const RICH_TAGS={ B:1, STRONG:1, I:1, EM:1, U:1, UL:1, OL:1, LI:1, BR:1, DIV:1, P:1 };
+    const RICH_SNIFF=/<(b|strong|i|em|u|ul|ol|li|br|div|p)\b[^>]*>/i;
+    // Parse in a detached document (DOMParser never loads sub-resources), strip
+    // every tag and attribute outside the allowlist, keep the text inside them.
+    function richParse(html){
+      const doc=new DOMParser().parseFromString('<body>'+String(html ?? '')+'</body>','text/html');
+      (function walk(node){
+        for(const n of [...node.childNodes]){
+          if(n.nodeType===1){
+            walk(n);
+            if(RICH_TAGS[n.tagName]){ for(const a of [...n.attributes]) n.removeAttribute(a.name); }
+            else n.replaceWith(...n.childNodes);
+          } else if(n.nodeType!==3) n.remove();
+        }
+      })(doc.body);
+      return doc;
+    }
+    // Sanitized HTML, safe to inject anywhere we used to esc(). Plain-text rows
+    // pass through escaped — display containers carry white-space:pre-wrap, so
+    // their newlines still break where they did before.
+    function richDisplay(s){
+      const v=String(s ?? '');
+      if(!RICH_SNIFF.test(v)) return esc(v);
+      return richParse(v).body.innerHTML;
+    }
+    // Plain text — what Claude, MiniSearch and entries.raw_text get.
+    function richPlain(s){
+      const v=String(s ?? '');
+      if(!RICH_SNIFF.test(v)) return v;
+      const doc=richParse(v), b=doc.body;
+      for(const li of b.querySelectorAll('li')) li.prepend(doc.createTextNode('• '));
+      // Blocks break BEFORE themselves (contenteditable leaves line 1 unwrapped
+      // and wraps every line after it), <br> breaks after.
+      for(const el of b.querySelectorAll('div,p,li')){
+        // A div that only wraps a list would double the break the <li> already adds.
+        const f=el.firstChild;
+        if(el.tagName!=='LI' && f && f.nodeType===1 && (f.tagName==='UL'||f.tagName==='OL')) continue;
+        el.before(doc.createTextNode('\n'));
+      }
+      for(const el of b.querySelectorAll('br')) el.after(doc.createTextNode('\n'));
+      return b.textContent.replace(/\n{3,}/g,'\n\n').trim();
+    }
+    function richGet(el){ const h=richParse(el.innerHTML).body.innerHTML; return richPlain(h).trim() ? h : ''; }
+    // Editors keep every line in its own block. A bare first-line text node makes
+    // execCommand('insertUnorderedList') swallow the lines above the caret, so
+    // plain text is split into <div>s on the way in and an empty editor is seeded.
+    function richSet(el, val){
+      const v=String(val ?? '');
+      if(!richPlain(v).trim()) el.innerHTML='<div><br></div>';
+      else if(RICH_SNIFF.test(v)) el.innerHTML=richParse(v).body.innerHTML;
+      else el.innerHTML=v.split('\n').map(l=> '<div>'+(esc(l)||'<br>')+'</div>').join('');
+      richEmpty(el);
+    }
+    function richSeed(el){
+      const h=el.innerHTML.trim();
+      if(h==='' || h==='<br>'){ el.innerHTML='<div><br></div>'; if(document.activeElement===el) placeCaretEnd(el); }
+    }
+    function richEmpty(el){ el.classList.toggle('is-empty', !el.textContent.trim() && !el.querySelector('li')); }
+    function placeCaretEnd(el){
+      const r=document.createRange(); r.selectNodeContents(el); r.collapse(false);
+      const s=document.getSelection(); s.removeAllRanges(); s.addRange(r);
+    }
+    // Wire one editor. Cmd/Ctrl+B / I / U, Cmd+Shift+8 bullets, Cmd+Shift+7
+    // numbers, and "- " / "* " at the start of a line becomes a bullet list.
+    function richEditor(el){
+      if(el.dataset.rich) return el; el.dataset.rich='1';
+      el.setAttribute('contenteditable','true');
+      try{ document.execCommand('styleWithCSS', false, false); }catch{}
+      el.addEventListener('keydown', e=>{
+        if(!(e.metaKey||e.ctrlKey)) return;
+        const k=e.key.toLowerCase();
+        let cmd=null;
+        if(k==='b') cmd='bold';
+        else if(k==='i') cmd='italic';
+        else if(k==='u') cmd='underline';
+        else if(e.shiftKey && (k==='8'||k==='*')) cmd='insertUnorderedList';
+        else if(e.shiftKey && (k==='7'||k==='&')) cmd='insertOrderedList';
+        if(!cmd) return;
+        e.preventDefault();
+        document.execCommand(cmd, false, null);
+        el.dispatchEvent(new Event('input',{bubbles:true}));
+      });
+      // "- " at the head of a line → bullet list (the way a notepad behaves).
+      el.addEventListener('beforeinput', e=>{
+        if(e.inputType!=='insertText' || e.data!==' ') return;
+        const sel=document.getSelection(); if(!sel.rangeCount) return;
+        const r=sel.getRangeAt(0); if(!r.collapsed) return;
+        const n=r.startContainer;
+        // Only when the line so far is exactly "-" or "*".
+        if(n.nodeType!==3 || r.startOffset!==1 || !/^[-*]$/.test(n.data[0])) return;
+        if(n.parentElement && n.parentElement.closest('li')) return;
+        e.preventDefault();
+        // Delete the marker through execCommand so the caret stays live — a raw
+        // range.deleteContents() leaves it detached and the list command then
+        // converts the wrong block.
+        const marker=document.createRange(); marker.setStart(n,0); marker.setEnd(n,1);
+        sel.removeAllRanges(); sel.addRange(marker);
+        document.execCommand('delete', false, null);
+        document.execCommand('insertUnorderedList', false, null);
+        el.dispatchEvent(new Event('input',{bubbles:true}));
+      });
+      // Paste as plain text — keeps pasted-in styling out of the record.
+      el.addEventListener('paste', e=>{
+        e.preventDefault();
+        const t=(e.clipboardData||window.clipboardData).getData('text/plain');
+        document.execCommand('insertText', false, t);
+      });
+      el.addEventListener('input', ()=>{ richSeed(el); richEmpty(el); });
+      el.addEventListener('focus', ()=> richSeed(el));
+      richSeed(el); richEmpty(el);
+      return el;
+    }
 
     // ── Settings ──
     function getOuraPat(){ return localStorage.getItem('still_oura_pat') || ''; }
@@ -1156,26 +1282,28 @@
       document.getElementById('capture-date').innerHTML=
         DOW[d.getDay()]+', '+d.getDate()+' '+MONTHS[d.getMonth()]+
         ' <span class="dot">·</span> '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}).toLowerCase();
-      document.getElementById('capture-text').value=''; updateCaptureCount();
+      richSet(document.getElementById('capture-text'), ''); updateCaptureCount();
     }
     function updateCaptureCount(){
-      const n=document.getElementById('capture-text').value.trim().length;
+      const n=richPlain(richGet(document.getElementById('capture-text'))).trim().length;
       document.getElementById('capture-count').textContent=n+' chars';
       document.getElementById('capture-save').disabled = n<1;
     }
+    richEditor(document.getElementById('capture-text'));
     document.getElementById('capture-text').addEventListener('input', updateCaptureCount);
     document.getElementById('capture-save').addEventListener('click', saveCapture);
     async function saveCapture(){
-      const text=document.getElementById('capture-text').value.trim(); if(!text) return;
+      const text=richGet(document.getElementById('capture-text')); if(!richPlain(text).trim()) return;
       const btn=document.getElementById('capture-save'); btn.disabled=true;
       try{
+        const plain=richPlain(text); // entries.raw_text and Claude stay plain text
         const ent=await sbFetch('entries',{method:'POST',prefer:'return=representation',
-          body:JSON.stringify({raw_text:text, primary_type:'thought', source_surface:'thoughts_screen'})});
+          body:JSON.stringify({raw_text:plain, primary_type:'thought', source_surface:'thoughts_screen'})});
         const tr=await sbFetch('thoughts',{method:'POST',prefer:'return=representation',
           body:JSON.stringify({source_entry_id:ent?.[0]?.id||null, text, thought_date:today(), status:'active'})});
         showToast('Captured'); navStack=[]; slideTo('home','right');
         // Suggestion-on-write: cluster async, propose a collection to confirm.
-        const row=tr?.[0]; if(row) suggestCollection('thoughts','thought', row.id, text);
+        const row=tr?.[0]; if(row) suggestCollection('thoughts','thought', row.id, plain);
       }catch(e){ showToast('Save failed — '+e.message); btn.disabled=false; }
     }
 
@@ -1217,7 +1345,7 @@
       try{
         const rows=await sbFetch('day_logs?date=eq.'+today()+'&order=created_at.desc&limit=1');
         todayLogRow=rows?.[0]||null;
-        document.getElementById('log-text').value=todayLogRow?todayLogRow.text:'';
+        richSet(document.getElementById('log-text'), todayLogRow?todayLogRow.text:'');
         if(todayLogRow?.extracted_entities) renderLogTags(todayLogRow.extracted_entities, false);
       }catch{ todayLogRow=null; }
     }
@@ -1232,6 +1360,7 @@
       }
       el.innerHTML=out.join('');
     }
+    richEditor(document.getElementById('log-text'));
     document.getElementById('log-text').addEventListener('input', ()=>{
       clearTimeout(logTimer); clearTimeout(logExtractTimer);
       logTimer=setTimeout(saveTodayLog, 2000);
@@ -1239,13 +1368,13 @@
     });
     document.getElementById('log-text').addEventListener('blur', saveTodayLog);
     async function saveTodayLog(){
-      const text=document.getElementById('log-text').value.trim(); if(!text) return;
+      const text=richGet(document.getElementById('log-text')); if(!richPlain(text).trim()) return;
       try{
         if(todayLogRow){
           await sbFetch('day_logs?id=eq.'+todayLogRow.id, {method:'PATCH', body:JSON.stringify({text})});
         } else {
           const ent=await sbFetch('entries', {method:'POST', prefer:'return=representation',
-            body:JSON.stringify({raw_text:text, primary_type:'day', source_surface:'today_screen'})});
+            body:JSON.stringify({raw_text:richPlain(text), primary_type:'day', source_surface:'today_screen'})});
           const rows=await sbFetch('day_logs', {method:'POST', prefer:'return=representation',
             body:JSON.stringify({source_entry_id:ent?.[0]?.id||null, text, date:today()})});
           todayLogRow=rows?.[0]||null;
@@ -1253,7 +1382,7 @@
       }catch(e){ showToast('Save failed — '+e.message); }
     }
     async function extractTodayLog(){
-      const text=document.getElementById('log-text').value.trim();
+      const text=richPlain(richGet(document.getElementById('log-text'))).trim();
       if(!text || !hasSession()) return; // silent on passive surface, no opaque failure
       const st=document.getElementById('log-status'); st.innerHTML='Extracting <span class="dot"></span>';
       try{
@@ -1292,13 +1421,14 @@
       const d=new Date(dateStr+'T12:00:00');
       const title=DOW[d.getDay()]+', '+d.getDate()+' '+MONTHS[d.getMonth()];
       showModal('<h4>Backfill — '+esc(title)+'</h4>'+
-        '<textarea class="input" id="bf-text" placeholder="What happened that day?" style="min-height:160px"></textarea>'+
+        '<div class="input rich" id="bf-text" data-ph="What happened that day?" style="min-height:160px"></div>'+
         '<button class="btn btn-primary" id="sheet-primary" style="margin-top:12px;width:100%">Save day</button>', ()=>{
+        richEditor(document.getElementById('bf-text'));
         document.getElementById('sheet-primary').addEventListener('click', async ()=>{
-          const text=document.getElementById('bf-text').value.trim(); if(!text) return;
+          const text=richGet(document.getElementById('bf-text')); if(!richPlain(text).trim()) return;
           try{
             const ent=await sbFetch('entries',{method:'POST',prefer:'return=representation',
-              body:JSON.stringify({raw_text:text, primary_type:'day', source_surface:'today_screen', composed_at:dateStr+'T12:00:00Z'})});
+              body:JSON.stringify({raw_text:richPlain(text), primary_type:'day', source_surface:'today_screen', composed_at:dateStr+'T12:00:00Z'})});
             await sbFetch('day_logs',{method:'POST',body:JSON.stringify({source_entry_id:ent?.[0]?.id||null, text, date:dateStr})});
             hideModal(); showToast('Saved '+dateStr); loadOpenDays();
           }catch(e){ showToast('Save failed — '+e.message); }
@@ -1318,7 +1448,7 @@
     function journalSearchText(it){
       const r=it.r||{}, parts=[it.d||''];
       const push=v=>{ if(v) parts.push(typeof v==='string'?v:(v.name||v.title||'')); };
-      push(r.text); push(r.note); push(r.place_name); push(r.title); push(r.format);
+      push(richPlain(r.text)); push(r.note); push(r.place_name); push(r.title); push(r.format);
       push(r.prompt_used); push(r.prompt);
       for(const p of (r.with_people||[])) push(p);
       for(const ds of (r.dishes||[])) push(ds);
@@ -1396,14 +1526,14 @@
         const tags=[]; const e=r.extracted_entities||{};
         for(const [k,icn] of [['restaurants','ti-tools-kitchen-2'],['people','ti-user'],['media','ti-player-play'],['places','ti-map-pin'],['activities','ti-triangle'],['cooking','ti-chef-hat']])
           for(const v of arr(e[k])){ const nm=typeof v==='string'?v:(v.name||v.title); if(nm) tags.push('<span><i class="ti '+icn+'"></i>'+esc(nm)+'</span>'); }
-        return head+'<div class="entry-prose">'+esc(r.text)+'</div>'+(tags.length?'<div class="entry-tags">'+tags.join('')+'</div>':'');
+        return head+'<div class="entry-prose">'+richDisplay(r.text)+'</div>'+(tags.length?'<div class="entry-tags">'+tags.join('')+'</div>':'');
       }
       if(it.t==='restaurant'){
         const meta=[ (r.with_people||[]).length?'with '+r.with_people.join(', '):'', (r.dishes||[]).join(', ') ].filter(Boolean).join(' · ');
         return head+'<div class="entry-headline">'+esc(r.place_name)+'</div>'+(meta?'<div class="entry-meta">'+esc(meta)+'</div>':'')+(r.note?'<div class="entry-note">"'+esc(r.note)+'"</div>':'');
       }
       if(it.t==='media') return head+'<div class="entry-headline">'+esc(r.title)+'<span class="entry-media-format">'+esc(r.format||'')+'</span></div>'+(r.note?'<div class="entry-note">'+esc(r.note)+'</div>':'')+(r.rating?'<div class="entry-rating">'+'★'.repeat(r.rating)+'☆'.repeat(5-r.rating)+'</div>':'');
-      if(it.t==='thought') return head+'<div class="entry-thought">'+esc(r.text)+'</div>';
+      if(it.t==='thought') return head+'<div class="entry-thought">'+richDisplay(r.text)+'</div>';
       // reflection — F4: show prompt + a highlight of what was written in the italic note slot
       return head+(r.prompt_used?'<div class="entry-meta">'+esc(r.prompt_used)+'</div>':'')+'<div class="entry-note">'+esc((r.text||'').slice(0,140))+((r.text||'').length>140?'…':'')+'</div>';
     }
@@ -1463,16 +1593,20 @@
           const raw=r[tab.dateCol]||r.created_at||'';
           const dd=raw?new Date(raw.length<=10?raw+'T12:00:00':raw).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
           const acts=[['edit','Edit']];
-          if(tab.k==='thoughts'){ acts.push(['to-insights','→ Insight']); acts.push(['to-mantras','→ Mantra']); }
-          if(tab.k==='insights'){ acts.push(['to-mantras','→ Mantra']); }
+          // One quiet arrow instead of a labelled button per destination —
+          // the destination is picked in the "Where to push?" sheet.
+          if((PUSH_TARGETS[tab.k]||[]).length) acts.push(['push','→']);
           acts.push(['collection', r.collection_id?'Move collection':'Add to collection']);
           acts.push(mindShowDismissed?['resurface','Resurface']:['dismiss','Dismiss']);
           acts.push(['delete','Delete']);
           return '<div class="mind-item'+(mindShowDismissed?' dismissed':'')+'" data-i="'+i+'">'+
-            '<div class="mind-text" data-edit="1" title="Tap to edit">'+esc(r.text||'')+'</div>'+
+            '<div class="mind-text" data-edit="1" title="Tap to edit">'+richDisplay(r.text||'')+'</div>'+
             '<div class="mind-meta">'+esc(dd)+(r.collection_id&&mindColMap[r.collection_id]?' · <span class="badge col"><i class="ti ti-folder"></i> '+esc(mindColMap[r.collection_id])+'</span>':'')+(r.pushed_to_course?' · <span class="badge">Pushed to Course</span>':'')+(mindShowDismissed?' · Dismissed':'')+'</div>'+
-            '<div class="mind-actions">'+acts.map(([a,l])=>
-              '<button class="mind-act'+(a==='delete'||a==='dismiss'?' danger':'')+'" data-act="'+a+'">'+l+'</button>').join('')+
+            '<div class="mind-actions">'+acts.map(([a,l])=>{
+              const cls='mind-act'+(a==='delete'||a==='dismiss'?' danger':'')+(a==='push'?' arrow':'');
+              const extra=a==='push'?' aria-label="Push" title="Push somewhere"':'';
+              return '<button class="'+cls+'"'+extra+' data-act="'+a+'">'+l+'</button>';
+            }).join('')+
             '</div></div>';
         }).join('');
         listEl.querySelectorAll('.mind-item').forEach(item=>{
@@ -1489,8 +1623,7 @@
     }
     function mindAction(act, tab, row){
       if(act==='edit')        return editSheet(tab.table, row);
-      if(act==='to-insights') return promoteSheet(tab.table, row, 'insights', 'Insights');
-      if(act==='to-mantras')  return promoteSheet(tab.table, row, 'mantras', 'Mantras');
+      if(act==='push')        return pushSheet(tab, row);
       if(act==='collection')  return collectionSheet(tab, row);
       if(act==='dismiss')     return setStatus(tab.table, row, 'dismissed');
       if(act==='resurface')   return setStatus(tab.table, row, 'active');
@@ -1500,16 +1633,16 @@
     // status/source_entry_id unchanged. Editing a dismissed row keeps it dismissed.
     function editSheet(table, row){
       showModal('<h4>Edit</h4>'+
-        '<textarea class="input" id="ed-text" style="min-height:140px">'+esc(row.text||'')+'</textarea>'+
+        '<div class="input rich" id="ed-text" style="min-height:140px"></div>'+
         '<div style="display:flex;gap:8px;margin-top:12px">'+
           '<button class="btn btn-secondary" id="sheet-cancel" style="flex:1">Cancel</button>'+
           '<button class="btn btn-primary" id="sheet-primary" style="flex:1">Save</button></div>', ()=>{
-        const ta=document.getElementById('ed-text');
+        const ta=richEditor(document.getElementById('ed-text')); richSet(ta, row.text||'');
         // Focus + place cursor at end for natural mid-edit feel.
-        setTimeout(()=>{ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 40);
+        setTimeout(()=>{ ta.focus(); placeCaretEnd(ta); }, 40);
         document.getElementById('sheet-cancel').addEventListener('click', hideModal);
         document.getElementById('sheet-primary').addEventListener('click', async ()=>{
-          const txt=ta.value.trim(); if(!txt) return;
+          const txt=richGet(ta); if(!richPlain(txt).trim()) return;
           if(txt===(row.text||'').trim()){ hideModal(); return; }
           try{
             await sbFetch(table+'?id=eq.'+row.id,{method:'PATCH',body:JSON.stringify({text:txt})});
@@ -1518,14 +1651,34 @@
         });
       });
     }
+    // Where a row can go from each tab. Drives both the arrow's presence and the
+    // sheet's options — nothing else needs to know the routes.
+    const PUSH_TARGETS={
+      thoughts: [['insights','Insights'], ['mantras','Mantras']],
+      insights: [['mantras','Mantras']],
+    };
+    function pushSheet(tab, row){
+      const targets=PUSH_TARGETS[tab.k]||[]; if(!targets.length) return;
+      showModal('<h4>Where to push?</h4>'+
+        '<p class="stub-note" style="padding:2px 0 14px">Moves it out of '+esc(tab.label)+'.</p>'+
+        targets.map(([t,l])=> '<button class="btn btn-secondary push-target" data-t="'+t+'" style="width:100%;margin-bottom:8px">'+l+'</button>').join('')+
+        '<button class="btn btn-secondary" id="sheet-cancel" style="width:100%">Cancel</button>', ()=>{
+        document.getElementById('sheet-cancel').addEventListener('click', hideModal);
+        document.querySelectorAll('.push-target').forEach(b=> b.addEventListener('click', ()=>{
+          const [t,l]=targets.find(x=> x[0]===b.dataset.t);
+          hideModal(); setTimeout(()=> promoteSheet(tab.table, row, t, l), 60);
+        }));
+      });
+    }
     // Move = move, not copy: insert into target (carry text + source_entry_id where
     // the target has it), then delete the source row.
     function promoteSheet(fromTable, row, toTable, toLabel){
       showModal('<h4>Move to '+toLabel+'</h4>'+
-        '<textarea class="input" id="pm-text" style="min-height:120px">'+esc(row.text||'')+'</textarea>'+
+        '<div class="input rich" id="pm-text" style="min-height:120px"></div>'+
         '<button class="btn btn-primary" id="sheet-primary" style="margin-top:12px;width:100%">Move to '+toLabel+'</button>', ()=>{
+        richSet(richEditor(document.getElementById('pm-text')), row.text||'');
         document.getElementById('sheet-primary').addEventListener('click', async ()=>{
-          const txt=document.getElementById('pm-text').value.trim(); if(!txt) return;
+          const txt=richGet(document.getElementById('pm-text')); if(!richPlain(txt).trim()) return;
           try{
             const body={ text:txt, status:'active' };
             if(toTable==='insights') body.source_entry_id=row.source_entry_id||null; // migration adds this col
@@ -1817,7 +1970,7 @@
       if(ov.classList.contains('show')){ const b=document.querySelector('#modal-sheet .btn-primary'); if(b) b.click(); return; }
       const c=cur();
       if(c==='capture'){ const b=document.getElementById('capture-save'); if(b && !b.disabled) b.click(); return; }
-      if(c==='journal'){ const t=document.getElementById('log-text'); if(t && t.value.trim()){ saveTodayLog(); showToast('Saved'); } return; }
+      if(c==='journal'){ const t=document.getElementById('log-text'); if(t && richPlain(richGet(t)).trim()){ saveTodayLog(); showToast('Saved'); } return; }
       if(c==='stoic'){ saveStoic(); return; }
       if(c==='apikey'){ document.getElementById('apikey-save').click(); return; }
     }
@@ -1845,7 +1998,7 @@
           const text = params.get('text');
           if (text) {
             const box = document.getElementById('capture-text');
-            box.value = text;
+            richSet(box, text);
             updateCaptureCount();
             box.focus();
           }
