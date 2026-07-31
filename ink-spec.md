@@ -67,23 +67,52 @@ Entry surfaces are `contenteditable` divs, not textareas: Capture, the Journal d
 
 **Structure rule.** Each line lives in its own block and an empty editor is seeded with `<div><br></div>`. Without that, `insertUnorderedList` swallows every line above the caret.
 
+### Fear Setting (added 2026-07-31)
+
+Tim Ferriss's exercise, reached from a fourth chip on the Stoic type row (`?screen=stoic&stoic=fear` also lands here) but rendered as **its own guided screen**, not another prompt set. Nine steps, one at a time: define the fear → worst case → how likely, really → prevent → repair → benefits of an attempt → cost of inaction at 6 months, 1 year, 3 years. The all-prompts-on-one-page shape the three Stoic practices use would defeat it; each answer has to be written before the next question is seen.
+
+Progress drafts to `localStorage` (`ink_fear_draft`) after every move, so leaving mid-exercise resumes on the step you left. The review page lists what was written and offers **one optional "Ask for a read"** — deliberately only after the last step, so the model cannot steer answers mid-exercise. Saves as a `reflections` row, `prompt_used='Fear Setting'`, tagged `fear-setting`, with the read appended under a `--- The read ---` rule. No schema change.
+
 ### Journal (swipe down) — day surface + timeline
 
 Top→bottom: (1) habit pill strip (toggles `habit_logs`); (2) today's day-log editor card with live entity-extraction tags + the "Open · not yet logged" backfill list; (3) filter chips `All / Days / Restaurants / Media / Thoughts / Reflections`; (4) the unified timeline. Everything the old Today screen did lives at the top of Journal; the rest is the existing read timeline.
 
 ### Mind (swipe right) — thought lifecycle
 
-Tabs **Thoughts · Insights · Mantras**. Each lists `status='active'` rows newest-first; a Dismissed toggle reveals `status='dismissed'`.
+**Flattened 2026-07-31.** One scrollable stream of all three types, newest first, each row badged `Thought` / `Insight` / `Mantra`. The three chips (`All · Thoughts · Insights · Mantras`) are a **filter that defaults to All**, not navigation — seeing everything in a theme must never require flipping between groups. A `Filed` toggle reveals `status='dismissed'`.
 
-- **Thoughts** row: Edit · → · Add to collection · Dismiss · Delete (Resurface if dismissed)
-- **Insights** row: Edit · → · Add to collection · Dismiss · Delete
-- **Mantras** row: Edit · Add to collection · Dismiss · Delete
+**Dismiss is called File.** It always meant "dealt with, stop showing me this", not "gone". Filing is the triage step, so it asks where the item should live: pick a collection, make a new one, or file without one. Filed items stay searchable and still resurface in Break.
+
+**Collections are flat** — one namespace shared by all three types, rather than one collection per type per name. Migration `supabase/migrations/mind_flat_collections.sql` merges duplicate names into the oldest row per user, repoints the entries, and adds a unique index so the split cannot re-form. A push between types now keeps its collection.
+
+- **Thought** row: Edit · → · Add to collection · File · Delete (Unfile if filed)
+- **Insight** row: Edit · → · Add to collection · File · Delete
+- **Mantra** row: Edit · Add to collection · File · Delete
 
 **Edit (added 2026-05-26).** Every Mind row supports in-place edit of its `text`. Two equivalent entry points: (a) the **Edit** action button at the head of the action row, and (b) **tap the row text itself** (`mind-text`) — follows the suite convention that "Today/list rows default to edit-form, not view-then-edit" ([[feedback_today_logs_editable]]). Both open a modal with a textarea pre-filled with the current text; Save → `PATCH <table>?id=eq.<id> { text }`. No schema change. Editing is allowed in both `active` and `dismissed` states; editing a dismissed row keeps it dismissed.
 
 **One arrow, not a button per destination (added 2026-07-31).** The labelled `→ Insight` / `→ Mantra` buttons read as clutter on every row. Replaced by a single quiet **→** action; tapping it opens a **"Where to push?"** sheet listing the destinations for that tab (Thoughts → Insights / Mantras; Insights → Mantras; Mantras → none, so no arrow). Picking one opens the existing move-confirm. Routes live in one `PUSH_TARGETS` map — the arrow's presence and the sheet's options both read from it.
 
 **Move = move, not copy.** Promote = insert into the target table carrying `text` + `source_entry_id`, then delete the source row — a promoted thought leaves Thoughts and appears under Insights, etc. The shared `mantras` (feeds home + Break) and Still's `insights` stay the system of record so existing integrations keep working. Promote opens a one-field confirm allowing a light text edit before the move. **Dismiss** → `status='dismissed'` (reversible). **Resurface** → `status='active'`. **Delete** → row removed (single confirm).
+
+### Challenges — the engine (added 2026-07-31)
+
+A challenge is **a push you are consciously running**, not a routine. Habits stay the Journal pill strip; the distinction is the point, so the two are not merged.
+
+Ink's challenges were a Still carryover: opt in to one of 15 hardcoded presets, and a read-only list. `active_challenges` now also carries `title`, `why`, `days` (null = open-ended) and `user_id`; `challenge_logs` carries `note` and `user_id`; both get per-user RLS. Preset opt-ins keep working — the view falls back to the `challenge_key` for a title. Migration: `supabase/migrations/challenges_engine.sql`.
+
+**The screen.** Live challenges as cards: title, why, `Day N of M` (or just `Day N` when open-ended), streak and days logged, one big check-in button, and Edit / Finish / Drop. Check-in is a `challenge_logs` row per day, so un-checking is a delete, not a flag. **Finish** keeps the record and asks what came of it (`outcome_note`); **Drop** removes it and its check-ins. The home chip shows the first live challenge, its day, and whether today is still open.
+
+**`challenges_today` — the suite contract.** One view, four readers. It exposes `title`, `why`, `days`, `day_number`, `days_done`, `done_today` and `streak` for every incomplete challenge, so nothing re-derives them:
+
+| Reader | Surface |
+|---|---|
+| Ink | Challenges screen + home chip |
+| Today app | A check-off row at the top of the morning tide checklist |
+| reMarkable | A pen-tickable line on page two of the morning brief |
+| Break | An occasional feed nudge while today's check-in is open, tickable from the card |
+
+The view is `security_invoker = on` — without it a view runs as its owner and would leak across users. Streak counts consecutive logged days ending today, or ending yesterday while today is still open, so a streak doesn't break until midnight. Verified against a real Postgres (PGlite) in `tests/challenges-view.test.mjs`.
 
 ### Push to Course (v1 — via Course's inbox)
 
@@ -817,4 +846,4 @@ Same design grammar as the rest of the suite: single column, generous gutters, b
 
 ---
 
-*Last updated: July 31, 2026 — Rich entry surfaces (keyboard-only bold/italic/underline/bullets) and the Mind "Where to push?" arrow. Successor to Still — replaces Still entirely.*
+*Last updated: July 31, 2026 — Rich entry surfaces, flat Mind triage, Fear Setting, and the challenge engine + `challenges_today` suite contract. Successor to Still — replaces Still entirely.*

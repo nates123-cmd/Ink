@@ -9,6 +9,7 @@
     "report": "playwright show-report"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.4",
     "@playwright/test": "^1.60.0"
   }
 }

@@ -309,6 +309,22 @@
     .stoic-prompt-dots { font-size: 11px; color: var(--whisper); margin-top: 8px; letter-spacing: 2px; }
     .stoic-a { width: 100%; margin-top: 10px; min-height: 60px; padding: 10px 12px; border: .5px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); font-family: var(--serif); font-size: 14px; line-height: 1.55; outline: none; resize: vertical; }
     .stoic-a:focus { border-color: var(--accent-soft); }
+    /* ── Challenges ── */
+    .ch-card { background: var(--card-bg); border: .5px solid var(--border); border-radius: 14px; padding: 16px 16px 14px; margin-bottom: 12px; }
+    .ch-card.done { opacity: .82; }
+    .ch-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+    .ch-title { font-family: var(--serif); font-size: 17px; color: var(--text); }
+    .ch-day { font-size: 10.5px; color: var(--whisper); letter-spacing: 1.2px; text-transform: uppercase; white-space: nowrap; }
+    .ch-why { font-family: var(--serif); font-style: italic; font-size: 13.5px; color: var(--muted); margin-top: 5px; line-height: 1.45; }
+    .ch-meta { font-size: 10.5px; color: var(--whisper); letter-spacing: 1.2px; text-transform: uppercase; margin: 10px 0 12px; }
+    .ch-check { width: 100%; }
+    .ch-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .ch-past-title { font-size: 10.5px; color: var(--whisper); letter-spacing: 1.5px; text-transform: uppercase; margin: 22px 0 10px; }
+    .ch-past { font-family: var(--serif); font-size: 14px; color: var(--muted); padding: 8px 0; border-bottom: .5px solid var(--border); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .ch-past span { font-family: var(--sans); font-size: 10.5px; color: var(--whisper); letter-spacing: 1px; }
+    .ch-past-note { flex-basis: 100%; font-size: 13px; font-style: italic; color: var(--whisper); margin-top: 4px; }
+    .active-chip.open i { color: var(--accent); }
+
     /* ── Fear Setting — one prompt at a time ── */
     .fear-step { font-size: 10.5px; color: var(--whisper); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
     .fear-dots { display: flex; gap: 5px; margin-bottom: 18px; }
@@ -533,7 +549,13 @@
     <div class="pad" id="prompt-library-list"></div>
   </div>
   <div class="screen" id="screen-challenges">
-    <div class="topbar"><div class="crumb">Challenges</div><button class="icon-btn" data-back aria-label="Back"><i class="ti ti-x"></i></button></div>
+    <div class="topbar">
+      <div class="crumb">Challenges</div>
+      <div style="display:flex;gap:4px">
+        <button class="icon-btn" id="challenge-new" aria-label="New challenge"><i class="ti ti-plus"></i></button>
+        <button class="icon-btn" data-back aria-label="Back"><i class="ti ti-x"></i></button>
+      </div>
+    </div>
     <div class="pad" id="challenges-list"></div>
   </div>
   <div class="screen" id="screen-pattern">
@@ -1227,11 +1249,14 @@
     }
     async function loadActiveChallenge(){
       try{
-        const rows=await sbFetch('active_challenges?completed=eq.false&order=created_at.desc&limit=1');
+        // challenges_today is the shared read contract (Ink, Today, reMarkable,
+        // Break). Day number, streak and done-today are computed once, in SQL.
+        const rows=await sbFetch('challenges_today?order=start_date.asc&limit=1');
         const r=rows?.[0]; const chip=document.getElementById('active-chip');
         if(!r){ chip.classList.remove('show'); return; }
-        const day=Math.floor((Date.now()-new Date(r.start_date+'T12:00:00').getTime())/86400000)+1;
-        document.getElementById('active-chip-text').textContent=' '+(r.challenge_key||'challenge').replace(/-/g,' ')+' · day '+day;
+        document.getElementById('active-chip-text').textContent=
+          ' '+r.title+' · day '+r.day_number+(r.done_today?' ✓':'');
+        chip.classList.toggle('open', !r.done_today);
         chip.classList.add('show');
       }catch{}
     }
@@ -2143,15 +2168,139 @@
     }
 
     // ════ Challenges ════
+    // A challenge is a push you are consciously running, not a routine — habits
+    // stay the daily pill strip. Everything read here comes from the
+    // `challenges_today` view (day number, streak, done-today), which is the same
+    // contract Today, the reMarkable daily page and Break read. Writes go to the
+    // underlying tables; nothing recomputes the derived numbers locally.
     async function loadChallenges(){
       const el=document.getElementById('challenges-list'); el.innerHTML='<div class="spinner"></div>';
       try{
-        const a=await sbFetch('active_challenges?order=created_at.desc')||[];
-        el.innerHTML = a.length ? a.map(x=>
-          '<div class="stoic-prompt-item"><div class="stoic-prompt-q">'+esc((x.challenge_key||'').replace(/-/g,' '))+'</div>'+
-          '<div class="stoic-prompt-dots">started '+esc(x.start_date)+(x.completed?' · done':'')+'</div></div>').join('') : '<p class="list-empty">No active challenges.</p>';
-      }catch(e){ el.innerHTML='<p class="stub-note">'+esc(e.message)+'</p>'; }
+        const [live, done]=await Promise.all([
+          sbFetch('challenges_today?order=start_date.asc'),
+          sbFetch('active_challenges?completed=eq.true&order=start_date.desc&limit=20'),
+        ]);
+        const cards=(live||[]).map((c,i)=>{
+          const len=c.days?(' of '+c.days):'';
+          const bits=[];
+          if(c.streak>0) bits.push(c.streak+' day streak');
+          bits.push(c.days_done+' logged');
+          return '<div class="ch-card'+(c.done_today?' done':'')+'" data-i="'+i+'">'+
+            '<div class="ch-head"><div class="ch-title">'+esc(c.title)+'</div>'+
+              '<div class="ch-day">Day '+c.day_number+esc(len)+'</div></div>'+
+            (c.why?'<div class="ch-why">'+esc(c.why)+'</div>':'')+
+            '<div class="ch-meta">'+esc(bits.join(' · '))+'</div>'+
+            '<button class="btn '+(c.done_today?'btn-secondary':'btn-primary')+' ch-check" data-i="'+i+'">'+
+              (c.done_today?'Done today ✓':'Mark today done')+'</button>'+
+            '<div class="ch-actions">'+
+              '<button class="mind-act" data-act="edit" data-i="'+i+'">Edit</button>'+
+              '<button class="mind-act" data-act="finish" data-i="'+i+'">Finish</button>'+
+              '<button class="mind-act danger" data-act="drop" data-i="'+i+'">Drop</button>'+
+            '</div></div>';
+        }).join('');
+        const past=(done||[]).length?
+          '<div class="ch-past-title">Finished</div>'+(done||[]).map(x=>
+            '<div class="ch-past">'+esc(x.title||(x.challenge_key||'').replace(/-/g,' '))+
+            '<span>'+esc(x.start_date||'')+'</span>'+
+            (x.outcome_note?'<div class="ch-past-note">'+esc(x.outcome_note)+'</div>':'')+'</div>').join(''):'';
+        el.innerHTML=(cards||'<p class="list-empty">Nothing running. A challenge is one push you are consciously making — tap + to start one.</p>')+past;
+        el.querySelectorAll('.ch-check').forEach(b=> b.addEventListener('click', ()=> toggleChallengeToday(live[+b.dataset.i])));
+        el.querySelectorAll('[data-act]').forEach(b=> b.addEventListener('click', ()=>{
+          const c=live[+b.dataset.i];
+          if(b.dataset.act==='edit')   return challengeForm(c);
+          if(b.dataset.act==='finish') return finishChallenge(c);
+          if(b.dataset.act==='drop')   return dropChallenge(c);
+        }));
+      }catch(e){
+        el.innerHTML='<p class="stub-note">Couldn’t load — '+esc(e.message)+
+          '<br><br>If this mentions <code>challenges_today</code>, run <code>supabase/migrations/challenges_engine.sql</code> in the SQL editor.</p>';
+      }
     }
+    // Check-in is a row in challenge_logs, one per day — the unique constraint
+    // makes it idempotent, so un-checking is a delete rather than a flag flip.
+    async function toggleChallengeToday(c){
+      if(!c) return;
+      try{
+        if(c.done_today){
+          await sbFetch('challenge_logs?active_challenge_id=eq.'+c.id+'&date=eq.'+today(), {method:'DELETE'});
+        } else {
+          await sbFetch('challenge_logs', {method:'POST', body:JSON.stringify({active_challenge_id:c.id, date:today()})});
+        }
+        loadChallenges(); loadActiveChallenge();
+      }catch(e){ showToast('Check-in failed — '+e.message); }
+    }
+    // One form for both new and edit. days blank = open-ended, which is the shape
+    // "10 minute brain sesh every day" actually needs.
+    function challengeForm(c){
+      const editing=!!c;
+      showModal('<h4>'+(editing?'Edit challenge':'New challenge')+'</h4>'+
+        '<div class="field-block"><label>What are you doing</label>'+
+          '<input class="input" id="ch-title" placeholder="10 minute brain sesh" value="'+esc(editing?c.title:'')+'" /></div>'+
+        '<div class="field-block"><label>Why</label>'+
+          '<input class="input" id="ch-why" placeholder="stop drifting through the morning" value="'+esc(editing&&c.why?c.why:'')+'" /></div>'+
+        '<div class="field-block"><label>How many days (blank = open-ended)</label>'+
+          '<input class="input" id="ch-days" type="number" inputmode="numeric" min="1" placeholder="open-ended" value="'+esc(editing&&c.days?c.days:'')+'" /></div>'+
+        '<div style="display:flex;gap:8px">'+
+          '<button class="btn btn-secondary" id="sheet-cancel" style="flex:1">Cancel</button>'+
+          '<button class="btn btn-primary" id="sheet-primary" style="flex:1">'+(editing?'Save':'Start')+'</button></div>', ()=>{
+        setTimeout(()=> document.getElementById('ch-title').focus(), 40);
+        document.getElementById('sheet-cancel').addEventListener('click', hideModal);
+        document.getElementById('sheet-primary').addEventListener('click', async ()=>{
+          const title=document.getElementById('ch-title').value.trim();
+          const why=document.getElementById('ch-why').value.trim();
+          const daysRaw=document.getElementById('ch-days').value.trim();
+          const days=daysRaw?Math.max(1, parseInt(daysRaw,10)||0):null;
+          if(!title) return showToast('Give it a name');
+          try{
+            if(editing){
+              await sbFetch('active_challenges?id=eq.'+c.id,{method:'PATCH',
+                body:JSON.stringify({title, why:why||null, days})});
+            } else {
+              await sbFetch('active_challenges',{method:'POST',
+                body:JSON.stringify({title, why:why||null, days, start_date:today(), completed:false})});
+            }
+            hideModal(); showToast(editing?'Saved':'Started'); loadChallenges(); loadActiveChallenge();
+          }catch(e){ showToast('Failed — '+e.message); }
+        });
+      });
+    }
+    // Finishing keeps the record and asks what came of it — that note is the
+    // whole point of having run it.
+    function finishChallenge(c){
+      showModal('<h4>Finish “'+esc(c.title)+'”</h4>'+
+        '<p class="stub-note" style="padding:2px 0 10px">Day '+c.day_number+' · '+c.days_done+' logged. What came of it?</p>'+
+        '<textarea class="input" id="ch-note" style="min-height:110px" placeholder="What changed, what stuck, what didn’t"></textarea>'+
+        '<div style="display:flex;gap:8px;margin-top:12px">'+
+          '<button class="btn btn-secondary" id="sheet-cancel" style="flex:1">Cancel</button>'+
+          '<button class="btn btn-primary" id="sheet-primary" style="flex:1">Finish</button></div>', ()=>{
+        document.getElementById('sheet-cancel').addEventListener('click', hideModal);
+        document.getElementById('sheet-primary').addEventListener('click', async ()=>{
+          const note=document.getElementById('ch-note').value.trim();
+          try{
+            await sbFetch('active_challenges?id=eq.'+c.id,{method:'PATCH',
+              body:JSON.stringify({completed:true, outcome_note:note||null})});
+            hideModal(); showToast('Finished'); loadChallenges(); loadActiveChallenge();
+          }catch(e){ showToast('Failed — '+e.message); }
+        });
+      });
+    }
+    function dropChallenge(c){
+      showModal('<h4>Drop “'+esc(c.title)+'”</h4>'+
+        '<p class="stub-note" style="padding:6px 0 14px">Removes the challenge and its check-ins. Finishing keeps the record instead.</p>'+
+        '<div style="display:flex;gap:8px">'+
+          '<button class="btn btn-secondary" id="sheet-cancel" style="flex:1">Cancel</button>'+
+          '<button class="btn btn-primary" id="sheet-primary" style="flex:1">Drop</button></div>', ()=>{
+        document.getElementById('sheet-cancel').addEventListener('click', hideModal);
+        document.getElementById('sheet-primary').addEventListener('click', async ()=>{
+          try{
+            await sbFetch('challenge_logs?active_challenge_id=eq.'+c.id,{method:'DELETE'});
+            await sbFetch('active_challenges?id=eq.'+c.id,{method:'DELETE'});
+            hideModal(); showToast('Dropped'); loadChallenges(); loadActiveChallenge();
+          }catch(e){ showToast('Failed — '+e.message); }
+        });
+      });
+    }
+    document.getElementById('challenge-new').addEventListener('click', ()=> challengeForm(null));
 
     // ── B1: ⌘/Ctrl+Enter submits the active entry surface ──
     function submitActive(){
