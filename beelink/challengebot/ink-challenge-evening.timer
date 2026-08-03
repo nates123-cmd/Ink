@@ -1,0 +1,12 @@
+[Unit]
+Description=Ink challenge catch-up at 20:00 America/New_York
+
+[Timer]
+# The evening ping only speaks if something is still owed and still open, so
+# on a finished day this fires and sends nothing.
+OnCalendar=*-*-* 20:00:00 America/New_York
+Persistent=false
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target
