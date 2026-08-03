@@ -1,5 +1,5 @@
 // Ink service worker — bump CACHE_NAME on every deploy.
-const CACHE_NAME = 'ink-v25';
+const CACHE_NAME = 'ink-v26';
 const STATIC = ['./', './index.html', './manifest.json', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -13,6 +13,38 @@ self.addEventListener('activate', e => {
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
+});
+
+// ── Web push ────────────────────────────────────────────────────────────────
+// The payload is JSON written by the push-send edge function. `tag` collapses
+// repeat nudges for the same challenge into one notification rather than
+// stacking a fresh banner every morning.
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { body: e.data && e.data.text() }; }
+  e.waitUntil(self.registration.showNotification(d.title || 'Ink', {
+    body: d.body || '',
+    tag: d.tag || 'ink-challenge',
+    renotify: true,
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    data: { url: d.url || './?screen=challenges' },
+  }));
+});
+
+// Focus an already-open Ink rather than piling up tabs, and only navigate when
+// the existing one is somewhere else.
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const target = (e.notification.data && e.notification.data.url) || './?screen=challenges';
+  e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const c of list) {
+      if (c.url.includes('/Ink') || c.url.includes('index.html')) {
+        return c.focus().then(w => (w && w.navigate ? w.navigate(target) : w));
+      }
+    }
+    return clients.openWindow(target);
+  }));
 });
 
 self.addEventListener('fetch', e => {

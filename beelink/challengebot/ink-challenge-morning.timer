@@ -1,0 +1,12 @@
+[Unit]
+Description=Ink challenge reminder at 07:00 America/New_York
+
+[Timer]
+# 07:00 in Nate's timezone. systemd handles the DST shift; the Beelink itself
+# runs UTC, so a bare cron line would drift an hour twice a year.
+OnCalendar=*-*-* 07:00:00 America/New_York
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

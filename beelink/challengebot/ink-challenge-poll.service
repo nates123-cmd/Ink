@@ -1,0 +1,23 @@
+[Unit]
+Description=Ink challenge Done-button handler (Telegram callback queries)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Each run does one 25s long-poll and exits; Restart turns that into a loop.
+# Type=simple, not oneshot — systemd refuses Restart=always on a oneshot.
+#
+# REFUSES to start unless TG_DEDICATED=1. The default token is the one OpenClaw
+# already polls, and Telegram hands each update to exactly one getUpdates
+# caller, so running this on the shared token silently eats OpenClaw's
+# messages. Leave this unit disabled until a fresh BotFather token is in place.
+Type=simple
+WorkingDirectory=%h/apps/challengebot
+ExecStart=/usr/bin/python3 %h/apps/challengebot/challengebot.py poll
+Restart=always
+RestartSec=2
+StandardOutput=append:%h/apps/challengebot/challengebot.log
+StandardError=append:%h/apps/challengebot/challengebot.log
+
+[Install]
+WantedBy=default.target
