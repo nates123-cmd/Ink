@@ -540,6 +540,7 @@
       <div class="field-block">
         <label>Challenge reminders on this device</label>
         <button type="button" class="btn btn-secondary" id="push-toggle" style="width:100%">Checking…</button>
+        <button type="button" class="btn btn-secondary" id="push-test" style="width:100%;margin-top:8px">Send a test</button>
         <p class="stub-note" id="push-note" style="padding:8px 0 0"></p>
       </div>
       <button class="btn btn-primary" id="apikey-save" style="width:100%">Save</button>
@@ -2438,9 +2439,11 @@
     }
     async function paintPushButton(){
       const btn=document.getElementById('push-toggle'), note=document.getElementById('push-note');
+      const test=document.getElementById('push-test');
       if(!btn) return;
       if(!pushSupported()){
         btn.textContent='Not available here'; btn.disabled=true;
+        if(test) test.style.display='none';
         note.textContent=/iPad|iPhone/.test(navigator.userAgent)
           ? 'On iPhone, add Ink to the Home Screen first — Safari only allows notifications for an installed app.'
           : 'This browser does not support notifications.';
@@ -2450,12 +2453,37 @@
       btn.disabled=false;
       btn.textContent=sub?'Turn off on this device':'Turn on';
       btn.className='btn '+(sub?'btn-secondary':'btn-primary');
+      // A test you can't send yet is just a dead button.
+      if(test){ test.style.display=sub?'block':'none'; test.disabled=false; test.textContent='Send a test'; }
       note.textContent=sub
         ? 'A nudge arrives at 7am, and again at 8pm only if the day is still open.'
         : (Notification.permission==='denied'
             ? 'Notifications are blocked for this site in your browser settings.'
             : 'Get the morning nudge here as well as on Telegram.');
     }
+    // Round-trips the real delivery path — Ink → push-send → Apple/Google →
+    // this device's service worker — so a success here means the 7am nudge
+    // will land too. A local showNotification() would prove only that
+    // permission was granted, which is the part that rarely breaks.
+    async function sendTestPush(){
+      const test=document.getElementById('push-test');
+      if(!await currentPushSub()) return showToast('Turn reminders on first');
+      test.disabled=true; test.textContent='Sending…';
+      try{
+        const res=await fetch(SB_URL+'/functions/v1/push-send', {method:'POST',
+          headers:{'content-type':'application/json', apikey:SB_KEY,
+                   Authorization:'Bearer '+(await sbBearer())},
+          // No user_id: the function takes it from the JWT, so this can only
+          // ever reach your own devices.
+          body:JSON.stringify({title:'Ink', tag:'ink-test',
+            body:'Test notification — reminders are working.'})});
+        const d=await res.json().catch(()=> ({}));
+        if(!res.ok) throw new Error(d.error||('HTTP '+res.status));
+        showToast(d.sent ? 'Sent to '+d.sent+' device'+(d.sent>1?'s':'') : 'No devices registered');
+      }catch(e){ showToast('Test failed — '+e.message); }
+      paintPushButton();
+    }
+    document.getElementById('push-test')?.addEventListener('click', sendTestPush);
     async function togglePush(){
       const btn=document.getElementById('push-toggle');
       btn.disabled=true;
