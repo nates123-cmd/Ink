@@ -10,6 +10,10 @@ function stubChallenges(page, { doneToday = false, extra = {}, weekLogs = [] } =
     window.__sbCalls = [];
     window.fetch = async (url, opts = {}) => {
       const u = String(url);
+      if (u.includes('/functions/v1/push-send')) {
+        window.__sbCalls.push({ path: 'functions/push-send', method: opts.method || 'GET', body: opts.body || null });
+        return new Response(JSON.stringify({ sent: 1 }), { status: 200 });
+      }
       if (u.includes('/rest/v1/')) {
         const path = u.split('/rest/v1/')[1];
         window.__sbCalls.push({ path, method: opts.method || 'GET', body: opts.body || null });
@@ -220,4 +224,21 @@ test('a plain daily challenge still saves as daily', async ({ page }) => {
   expect(body.cadence).toBe('daily');
   expect(body.days).toBe(7);
   expect(body.weekdays).toBeNull();
+});
+
+test('the test notification posts no user_id, so it can only reach your own devices', async ({ page }) => {
+  await stubChallenges(page);
+  await boot(page);
+  await page.evaluate(async () => {
+    // Pretend this device is subscribed; the real PushManager needs an
+    // installed PWA and a live push service, neither of which exist in CI.
+    window.currentPushSub = async () => ({ endpoint: 'https://example.test/sub' });
+    await sendTestPush();
+  });
+  const call = await page.evaluate(() => window.__sbCalls.find((c) => c.path === 'functions/push-send'));
+  expect(call.method).toBe('POST');
+  const body = JSON.parse(call.body);
+  expect(body.user_id).toBeUndefined();   // the function reads it from the JWT
+  expect(body.title).toBe('Ink');
+  expect(body.tag).toBe('ink-test');
 });

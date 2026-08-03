@@ -46,8 +46,6 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
 
   const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
-  if (!SEND_SECRET) return json({ error: 'PUSH_SEND_SECRET is not configured' }, 500);
-  if (!sameSecret(token, SEND_SECRET)) return json({ error: 'forbidden' }, 403);
 
   if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
     return json({ error: 'VAPID keys are not configured' }, 500);
@@ -60,10 +58,24 @@ Deno.serve(async (req) => {
     return json({ error: 'bad JSON' }, 400);
   }
 
-  const userId = String(payload.user_id ?? '');
-  if (!userId) return json({ error: 'user_id is required' }, 400);
-
   const sb = createClient(Deno.env.get('SUPABASE_URL')!, SERVICE_KEY);
+
+  // Two callers, two very different privileges.
+  let userId: string;
+  if (SEND_SECRET && sameSecret(token, SEND_SECRET)) {
+    // The Beelink. Trusted, so it may name whose devices to reach.
+    userId = String(payload.user_id ?? '');
+    if (!userId) return json({ error: 'user_id is required' }, 400);
+  } else {
+    // A signed-in user, from Ink itself. They may only ever reach their OWN
+    // devices: the id comes from the verified JWT and any user_id in the body
+    // is ignored rather than honoured. That is the entire boundary — without
+    // it, one user's token would be able to push to anyone.
+    const { data, error: authErr } = await sb.auth.getUser(token);
+    if (authErr || !data?.user) return json({ error: 'forbidden' }, 403);
+    userId = data.user.id;
+  }
+
   const { data: subs, error } = await sb
     .from('push_subscriptions')
     .select('id, endpoint, p256dh, auth')
