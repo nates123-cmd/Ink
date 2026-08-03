@@ -317,7 +317,27 @@
     .ch-day { font-size: 10.5px; color: var(--whisper); letter-spacing: 1.2px; text-transform: uppercase; white-space: nowrap; }
     .ch-why { font-family: var(--serif); font-style: italic; font-size: 13.5px; color: var(--muted); margin-top: 5px; line-height: 1.45; }
     .ch-meta { font-size: 10.5px; color: var(--whisper); letter-spacing: 1.2px; text-transform: uppercase; margin: 10px 0 12px; }
+    /* Week strip — seven taps, Monday first. A hollow dot is a day the cadence
+       does not ask for; it still logs, it just never counts against you. */
+    .ch-week { display: flex; gap: 6px; margin: 12px 0 14px; }
+    .ch-dot { flex: 1; aspect-ratio: 1; min-width: 0; border-radius: 50%; border: .5px solid var(--border);
+              background: transparent; color: var(--whisper); font-family: var(--sans); font-size: 10px;
+              letter-spacing: .5px; display: flex; align-items: center; justify-content: center;
+              cursor: pointer; padding: 0; transition: background .15s, color .15s, border-color .15s; }
+    .ch-dot.off { border-style: dashed; opacity: .5; }
+    .ch-dot.on { background: var(--accent); border-color: var(--accent); color: var(--card-bg); opacity: 1; }
+    .ch-dot.today { box-shadow: 0 0 0 1.5px var(--accent); }
+    .ch-dot.future { opacity: .28; cursor: default; }
     .ch-check { width: 100%; }
+    /* Cadence picker */
+    .cad-seg { display: flex; gap: 6px; }
+    .cad-seg button { flex: 1; padding: 9px 4px; font-size: 11px; border-radius: 9px; border: .5px solid var(--border);
+                      background: transparent; color: var(--muted); cursor: pointer; }
+    .cad-seg button.sel { background: var(--accent); border-color: var(--accent); color: var(--card-bg); }
+    .cad-days { display: flex; gap: 6px; margin-top: 10px; }
+    .cad-days button { flex: 1; aspect-ratio: 1; border-radius: 50%; border: .5px solid var(--border);
+                       background: transparent; color: var(--muted); font-size: 11px; cursor: pointer; padding: 0; }
+    .cad-days button.sel { background: var(--accent); border-color: var(--accent); color: var(--card-bg); }
     .ch-actions { display: flex; gap: 8px; margin-top: 10px; }
     .ch-past-title { font-size: 10.5px; color: var(--whisper); letter-spacing: 1.5px; text-transform: uppercase; margin: 22px 0 10px; }
     .ch-past { font-family: var(--serif); font-size: 14px; color: var(--muted); padding: 8px 0; border-bottom: .5px solid var(--border); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
@@ -687,6 +707,11 @@
     // ── Helpers ──
     function esc(s){ return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     function today(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+    function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+    function addDays(s,n){ const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+n); return ymd(d); }
+    // ISO weekday, Monday = 1, to match extract(isodow) in challenges_today.
+    function isoDow(s){ const n=new Date(s+'T00:00:00').getDay(); return n===0?7:n; }
+    function mondayOf(s){ return addDays(s, 1-isoDow(s)); }
     function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
     function fmtDate(ts){ return new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
     function arr(x){ return Array.isArray(x) ? x : (x ? [x] : []); }
@@ -1254,9 +1279,13 @@
         const rows=await sbFetch('challenges_today?order=start_date.asc&limit=1');
         const r=rows?.[0]; const chip=document.getElementById('active-chip');
         if(!r){ chip.classList.remove('show'); return; }
+        const prog=r.cadence==='weekly_count'
+          ? r.week_done+' of '+(r.week_target||1)+' this week'
+          : 'day '+r.day_number;
         document.getElementById('active-chip-text').textContent=
-          ' '+r.title+' · day '+r.day_number+(r.done_today?' ✓':'');
-        chip.classList.toggle('open', !r.done_today);
+          ' '+r.title+' · '+prog+(r.done_today?' ✓':'');
+        // A rest day is not an unfinished day — the chip only glows when owed.
+        chip.classList.toggle('open', !r.done_today && r.due_today);
         chip.classList.add('show');
       }catch{}
     }
@@ -2176,22 +2205,38 @@
     async function loadChallenges(){
       const el=document.getElementById('challenges-list'); el.innerHTML='<div class="spinner"></div>';
       try{
-        const [live, done]=await Promise.all([
+        const [liveRaw, done]=await Promise.all([
           sbFetch('challenges_today?order=start_date.asc'),
           sbFetch('active_challenges?completed=eq.true&order=start_date.desc&limit=20'),
         ]);
+        // Defaults for the pre-cadence shape of the view: a row without a
+        // cadence is the daily challenge it has always been, and is owed today.
+        const live=(liveRaw||[]).map(c=>{
+          const td=c.today_local||today();
+          return {...c, cadence:c.cadence||'daily', due_today:c.due_today!==false,
+                  today_local:td, week_start:c.week_start||mondayOf(td)};
+        });
+        // One fetch covers every card's week strip. The view hands back the
+        // week_start it used, so the client never re-derives where Monday is.
+        const weekFrom=live.reduce((a,c)=> !a||c.week_start<a?c.week_start:a, null);
+        const wlogs=weekFrom
+          ? (await sbFetch('challenge_logs?select=active_challenge_id,date&date=gte.'+weekFrom)) || []
+          : [];
+        const logged=new Set(wlogs.map(l=> l.active_challenge_id+'|'+l.date));
         const cards=(live||[]).map((c,i)=>{
           const len=c.days?(' of '+c.days):'';
           const bits=[];
-          if(c.streak>0) bits.push(c.streak+' day streak');
+          if(c.streak>0) bits.push(c.streak+(c.cadence==='weekly_count'?' week streak':' day streak'));
+          if(c.cadence==='weekly_count') bits.push(c.week_done+' of '+(c.week_target||1)+' this week');
           bits.push(c.days_done+' logged');
           return '<div class="ch-card'+(c.done_today?' done':'')+'" data-i="'+i+'">'+
             '<div class="ch-head"><div class="ch-title">'+esc(c.title)+'</div>'+
               '<div class="ch-day">Day '+c.day_number+esc(len)+'</div></div>'+
             (c.why?'<div class="ch-why">'+esc(c.why)+'</div>':'')+
+            weekStrip(c, logged)+
             '<div class="ch-meta">'+esc(bits.join(' · '))+'</div>'+
-            '<button class="btn '+(c.done_today?'btn-secondary':'btn-primary')+' ch-check" data-i="'+i+'">'+
-              (c.done_today?'Done today ✓':'Mark today done')+'</button>'+
+            '<button class="btn '+(c.done_today||!c.due_today?'btn-secondary':'btn-primary')+' ch-check" data-i="'+i+'">'+
+              (c.done_today?'Done today ✓':(c.due_today?'Mark today done':'Not scheduled today — log anyway'))+'</button>'+
             '<div class="ch-actions">'+
               '<button class="mind-act" data-act="edit" data-i="'+i+'">Edit</button>'+
               '<button class="mind-act" data-act="finish" data-i="'+i+'">Finish</button>'+
@@ -2205,6 +2250,10 @@
             (x.outcome_note?'<div class="ch-past-note">'+esc(x.outcome_note)+'</div>':'')+'</div>').join(''):'';
         el.innerHTML=(cards||'<p class="list-empty">Nothing running. A challenge is one push you are consciously making — tap + to start one.</p>')+past;
         el.querySelectorAll('.ch-check').forEach(b=> b.addEventListener('click', ()=> toggleChallengeToday(live[+b.dataset.i])));
+        el.querySelectorAll('.ch-dot').forEach(b=> b.addEventListener('click', ()=>{
+          if(b.disabled) return;
+          toggleChallengeDay(b.dataset.ch, b.dataset.d, b.classList.contains('on'));
+        }));
         el.querySelectorAll('[data-act]').forEach(b=> b.addEventListener('click', ()=>{
           const c=live[+b.dataset.i];
           if(b.dataset.act==='edit')   return challengeForm(c);
@@ -2216,33 +2265,90 @@
           '<br><br>If this mentions <code>challenges_today</code>, run <code>supabase/migrations/challenges_engine.sql</code> in the SQL editor.</p>';
       }
     }
+    // Does the cadence ask for this date? Mirrors due_today in the view, but for
+    // any day of the week rather than just today. weekly_count asks for a count,
+    // not particular days, so every day of its week is fair game.
+    function scheduledOn(c, date){
+      if(c.cadence==='weekdays') return (c.weekdays||[1,2,3,4,5,6,7]).includes(isoDow(date));
+      return true;
+    }
+    // Seven taps, Monday first. Backfilling Tuesday from Thursday is the point —
+    // forgetting to tick is not the same as not having done it.
+    function weekStrip(c, logged){
+      const L=['M','T','W','T','F','S','S'];
+      let out='';
+      for(let k=0;k<7;k++){
+        const d=addDays(c.week_start, k);
+        const cls=['ch-dot'];
+        if(logged.has(c.id+'|'+d)) cls.push('on');
+        if(!scheduledOn(c, d)) cls.push('off');
+        if(d===c.today_local) cls.push('today');
+        const future=d>c.today_local;
+        if(future) cls.push('future');
+        out+='<button class="'+cls.join(' ')+'" data-ch="'+esc(c.id)+'" data-d="'+esc(d)+'"'+
+             (future?' disabled':'')+' aria-label="'+esc(d)+'">'+L[k]+'</button>';
+      }
+      return '<div class="ch-week">'+out+'</div>';
+    }
     // Check-in is a row in challenge_logs, one per day — the unique constraint
     // makes it idempotent, so un-checking is a delete rather than a flag flip.
-    async function toggleChallengeToday(c){
-      if(!c) return;
+    async function toggleChallengeDay(id, date, on){
       try{
-        if(c.done_today){
-          await sbFetch('challenge_logs?active_challenge_id=eq.'+c.id+'&date=eq.'+today(), {method:'DELETE'});
+        if(on){
+          await sbFetch('challenge_logs?active_challenge_id=eq.'+id+'&date=eq.'+date, {method:'DELETE'});
         } else {
-          await sbFetch('challenge_logs', {method:'POST', body:JSON.stringify({active_challenge_id:c.id, date:today()})});
+          await sbFetch('challenge_logs', {method:'POST', body:JSON.stringify({active_challenge_id:id, date})});
         }
         loadChallenges(); loadActiveChallenge();
       }catch(e){ showToast('Check-in failed — '+e.message); }
     }
+    // The big button is the strip's today dot by another name. today_local comes
+    // from the view so a 9pm check-in lands on the day it felt like, not UTC's.
+    function toggleChallengeToday(c){
+      if(!c) return;
+      return toggleChallengeDay(c.id, c.today_local||today(), c.done_today);
+    }
     // One form for both new and edit. days blank = open-ended, which is the shape
-    // "10 minute brain sesh every day" actually needs.
+    // "10 minute brain sesh every day" actually needs. Cadence covers the other
+    // two: specific weekdays, or a count to hit inside the week.
+    const WD_LABELS=[['1','M'],['2','T'],['3','W'],['4','T'],['5','F'],['6','S'],['7','S']];
     function challengeForm(c){
       const editing=!!c;
+      let cad=editing?(c.cadence||'daily'):'daily';
+      const wd=new Set(editing&&c.cadence==='weekdays'?(c.weekdays||[]):[1,2,3,4,5]);
       showModal('<h4>'+(editing?'Edit challenge':'New challenge')+'</h4>'+
         '<div class="field-block"><label>What are you doing</label>'+
-          '<input class="input" id="ch-title" placeholder="10 minute brain sesh" value="'+esc(editing?c.title:'')+'" /></div>'+
+          '<input class="input" id="ch-title" placeholder="Walk" value="'+esc(editing?c.title:'')+'" /></div>'+
         '<div class="field-block"><label>Why</label>'+
           '<input class="input" id="ch-why" placeholder="stop drifting through the morning" value="'+esc(editing&&c.why?c.why:'')+'" /></div>'+
+        '<div class="field-block"><label>How often</label>'+
+          '<div class="cad-seg" id="ch-cad">'+
+            '<button data-c="daily">Every day</button>'+
+            '<button data-c="weekdays">Certain days</button>'+
+            '<button data-c="weekly_count">Times a week</button></div>'+
+          '<div class="cad-days" id="ch-wd">'+WD_LABELS.map(([n,l])=>
+            '<button data-n="'+n+'">'+l+'</button>').join('')+'</div>'+
+          '<input class="input" id="ch-per" type="number" inputmode="numeric" min="1" max="7" '+
+            'style="margin-top:10px" placeholder="how many times a week" value="'+
+            esc(editing&&c.week_target?c.week_target:'')+'" /></div>'+
         '<div class="field-block"><label>How many days (blank = open-ended)</label>'+
           '<input class="input" id="ch-days" type="number" inputmode="numeric" min="1" placeholder="open-ended" value="'+esc(editing&&c.days?c.days:'')+'" /></div>'+
         '<div style="display:flex;gap:8px">'+
           '<button class="btn btn-secondary" id="sheet-cancel" style="flex:1">Cancel</button>'+
           '<button class="btn btn-primary" id="sheet-primary" style="flex:1">'+(editing?'Save':'Start')+'</button></div>', ()=>{
+        const seg=document.getElementById('ch-cad'), wdRow=document.getElementById('ch-wd'), per=document.getElementById('ch-per');
+        // Only the control the chosen cadence actually uses stays on screen.
+        function paint(){
+          seg.querySelectorAll('button').forEach(b=> b.classList.toggle('sel', b.dataset.c===cad));
+          wdRow.style.display = cad==='weekdays'?'flex':'none';
+          per.style.display   = cad==='weekly_count'?'block':'none';
+          wdRow.querySelectorAll('button').forEach(b=> b.classList.toggle('sel', wd.has(+b.dataset.n)));
+        }
+        seg.querySelectorAll('button').forEach(b=> b.addEventListener('click', ()=>{ cad=b.dataset.c; paint(); }));
+        wdRow.querySelectorAll('button').forEach(b=> b.addEventListener('click', ()=>{
+          const n=+b.dataset.n; wd.has(n)?wd.delete(n):wd.add(n); paint();
+        }));
+        paint();
         setTimeout(()=> document.getElementById('ch-title').focus(), 40);
         document.getElementById('sheet-cancel').addEventListener('click', hideModal);
         document.getElementById('sheet-primary').addEventListener('click', async ()=>{
@@ -2250,14 +2356,19 @@
           const why=document.getElementById('ch-why').value.trim();
           const daysRaw=document.getElementById('ch-days').value.trim();
           const days=daysRaw?Math.max(1, parseInt(daysRaw,10)||0):null;
+          const perWeek=Math.min(7, Math.max(1, parseInt(per.value,10)||0));
           if(!title) return showToast('Give it a name');
+          if(cad==='weekdays' && !wd.size) return showToast('Pick at least one day');
+          if(cad==='weekly_count' && !per.value.trim()) return showToast('How many times a week?');
+          const body={title, why:why||null, days, cadence:cad,
+            weekdays: cad==='weekdays'?[...wd].sort((a,b)=>a-b):null,
+            per_week: cad==='weekly_count'?perWeek:null};
           try{
             if(editing){
-              await sbFetch('active_challenges?id=eq.'+c.id,{method:'PATCH',
-                body:JSON.stringify({title, why:why||null, days})});
+              await sbFetch('active_challenges?id=eq.'+c.id,{method:'PATCH', body:JSON.stringify(body)});
             } else {
               await sbFetch('active_challenges',{method:'POST',
-                body:JSON.stringify({title, why:why||null, days, start_date:today(), completed:false})});
+                body:JSON.stringify({...body, start_date:today(), completed:false})});
             }
             hideModal(); showToast(editing?'Saved':'Started'); loadChallenges(); loadActiveChallenge();
           }catch(e){ showToast('Failed — '+e.message); }
