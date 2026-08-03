@@ -537,6 +537,11 @@
           <button type="button" class="theme-btn" data-th="solar">Solar</button>
         </div>
       </div>
+      <div class="field-block">
+        <label>Challenge reminders on this device</label>
+        <button type="button" class="btn btn-secondary" id="push-toggle" style="width:100%">Checking…</button>
+        <p class="stub-note" id="push-note" style="padding:8px 0 0"></p>
+      </div>
       <button class="btn btn-primary" id="apikey-save" style="width:100%">Save</button>
       <div class="field-block" style="margin-top:24px;border-top:.5px solid var(--hairline);padding-top:18px">
         <label>Export / share file</label>
@@ -1183,7 +1188,7 @@
       if(id==='habits-manage'){ loadHabitsManage(); }
       if(id==='prompt-library'){ loadPromptLibrary(); }
       if(id==='challenges'){ loadChallenges(); }
-      if(id==='apikey'){ initThemeRow(); document.getElementById('oura-input').value=getOuraPat(); const who=document.getElementById('otp-whoami'); if(who) who.textContent=authedEmail()?('('+authedEmail()+')'):''; }
+      if(id==='apikey'){ initThemeRow(); document.getElementById('oura-input').value=getOuraPat(); const who=document.getElementById('otp-whoami'); if(who) who.textContent=authedEmail()?('('+authedEmail()+')'):''; paintPushButton(); }
     }
     document.querySelectorAll('[data-nav]').forEach(c=> c.addEventListener('click', ()=> navigate(c.dataset.nav)));
     document.querySelectorAll('[data-back]').forEach(c=> c.addEventListener('click', ()=> goBack()));
@@ -2412,6 +2417,71 @@
       });
     }
     document.getElementById('challenge-new').addEventListener('click', ()=> challengeForm(null));
+
+    // ════ Web push ════
+    // The Beelink sends the same reminder over Telegram and over push, on
+    // purpose: they fail independently, so one going quiet is not silence.
+    const VAPID_PUBLIC='BL7GSbbkMSNnVCcah2z23KJxLPPqgxdFmaqULECz9OO8cwdxkXxePLdP7XlZfeV4TcOOa0AW2gn075yr7b7W_Do';
+    function b64ToBytes(s){
+      const pad='='.repeat((4-s.length%4)%4);
+      const raw=atob((s+pad).replace(/-/g,'+').replace(/_/g,'/'));
+      return Uint8Array.from(raw, ch=> ch.charCodeAt(0));
+    }
+    // iOS only exposes PushManager to an installed PWA, so an un-installed
+    // Safari tab reports "unsupported" here and that is the honest answer.
+    function pushSupported(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+
+    async function currentPushSub(){
+      if(!pushSupported()) return null;
+      try{ return await (await navigator.serviceWorker.ready).pushManager.getSubscription(); }
+      catch{ return null; }
+    }
+    async function paintPushButton(){
+      const btn=document.getElementById('push-toggle'), note=document.getElementById('push-note');
+      if(!btn) return;
+      if(!pushSupported()){
+        btn.textContent='Not available here'; btn.disabled=true;
+        note.textContent=/iPad|iPhone/.test(navigator.userAgent)
+          ? 'On iPhone, add Ink to the Home Screen first — Safari only allows notifications for an installed app.'
+          : 'This browser does not support notifications.';
+        return;
+      }
+      const sub=await currentPushSub();
+      btn.disabled=false;
+      btn.textContent=sub?'Turn off on this device':'Turn on';
+      btn.className='btn '+(sub?'btn-secondary':'btn-primary');
+      note.textContent=sub
+        ? 'A nudge arrives at 7am, and again at 8pm only if the day is still open.'
+        : (Notification.permission==='denied'
+            ? 'Notifications are blocked for this site in your browser settings.'
+            : 'Get the morning nudge here as well as on Telegram.');
+    }
+    async function togglePush(){
+      const btn=document.getElementById('push-toggle');
+      btn.disabled=true;
+      try{
+        const existing=await currentPushSub();
+        if(existing){
+          await sbFetch('push_subscriptions?endpoint=eq.'+encodeURIComponent(existing.endpoint), {method:'DELETE'});
+          await existing.unsubscribe();
+          showToast('Reminders off for this device');
+        } else {
+          if(await Notification.requestPermission()!=='granted'){ showToast('Notifications blocked'); return paintPushButton(); }
+          const reg=await navigator.serviceWorker.ready;
+          const sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:b64ToBytes(VAPID_PUBLIC)});
+          const j=sub.toJSON();
+          // endpoint is unique, so re-subscribing the same device updates its
+          // keys instead of leaving a dead row behind.
+          await sbFetch('push_subscriptions?on_conflict=endpoint', {method:'POST',
+            prefer:'resolution=merge-duplicates',
+            body:JSON.stringify({endpoint:j.endpoint, p256dh:j.keys.p256dh, auth:j.keys.auth,
+                                 user_agent:navigator.userAgent})});
+          showToast('Reminders on');
+        }
+      }catch(e){ showToast('Failed — '+e.message); }
+      paintPushButton();
+    }
+    document.getElementById('push-toggle')?.addEventListener('click', togglePush);
 
     // ── B1: ⌘/Ctrl+Enter submits the active entry surface ──
     function submitActive(){

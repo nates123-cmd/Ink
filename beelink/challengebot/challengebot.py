@@ -53,7 +53,7 @@ def load_env():
                 k, v = line.split("=", 1)
                 env[k.strip()] = v.strip()
     for k in ("TG_BOT_TOKEN", "TG_CHAT_ID", "SUPABASE_URL", "SUPABASE_SERVICE_KEY",
-              "INK_USER_ID", "INK_URL", "TG_DEDICATED"):
+              "INK_USER_ID", "INK_URL", "TG_DEDICATED", "PUSH_SEND_SECRET"):
         env.setdefault(k, os.environ.get(k, ""))
     return env
 
@@ -168,11 +168,36 @@ def remind(when, dry=False):
         url = (ENV.get("INK_URL") or "https://nates123-cmd.github.io/Ink/") + "?screen=challenges"
         buttons = [[{"text": "Open Ink", "url": url}]]
 
+    # Push and Telegram carry the same nudge and fail independently — if one
+    # channel is dead, the other still lands, so quiet always means "nothing
+    # owed" rather than "something broke".
+    push_title = head
+    push_body = "\n".join(line(c) for c in owed)
+
     if dry:
         print("\n".join(body))
         print("buttons: " + json.dumps(buttons))
+        print("push: %s / %s" % (push_title, push_body.replace("\n", " | ")))
         return
+
     send("\n".join(body), buttons)
+    push(push_title, push_body)
+
+
+def push(title, body):
+    """Best-effort Web Push. Never let a push failure kill the Telegram nudge."""
+    url = ENV["SUPABASE_URL"].rstrip("/") + "/functions/v1/push-send"
+    key = ENV.get("PUSH_SEND_SECRET", "")
+    if not key:
+        return
+    try:
+        req(url, {"user_id": ENV["INK_USER_ID"], "title": title, "body": body,
+                  "url": (ENV.get("INK_URL") or "") + "?screen=challenges",
+                  "tag": "ink-challenge"},
+            {"Authorization": "Bearer " + key})
+    except Exception as e:
+        print("%s push failed: %s" % (datetime.now().isoformat(timespec="seconds"), e),
+              file=sys.stderr)
 
 
 # ── Button taps ─────────────────────────────────────────────────────────────

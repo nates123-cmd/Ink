@@ -18,6 +18,25 @@ them write. Nothing here re-derives "is it due", "what day are we on" or
     TG_BOT_TOKEN, TG_CHAT_ID, TG_DEDICATED
     SUPABASE_URL, SUPABASE_SERVICE_KEY
     INK_USER_ID, INK_URL
+    PUSH_SEND_SECRET
+
+## Two channels, one nudge
+
+Every reminder goes out over Telegram **and** Web Push. They fail
+independently on purpose: if one channel dies the other still lands, so quiet
+always means "nothing owed" rather than "something broke". A push failure is
+logged and swallowed — it never stops the Telegram message.
+
+Push goes through the `push-send` edge function, gated by `PUSH_SEND_SECRET`
+rather than the service role key. Supabase injects `SUPABASE_SERVICE_ROLE_KEY`
+in whichever format the project currently uses, which is not necessarily the
+legacy JWT a caller holds; comparing against it fails closed in a way that
+looks exactly like a bug. A dedicated secret has no such ambiguity and
+survives a key rotation.
+
+Devices register themselves from Ink's Settings screen. Until at least one
+does, `push-send` returns `{"sent":0,"note":"no subscriptions"}`, which is the
+expected steady state, not an error.
 
 ## Schedule
 
