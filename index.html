@@ -158,7 +158,10 @@
     .slot-line .virtue { color: var(--accent); font-style: normal; font-weight: 500; }
     .slot-highlight { font-family: var(--serif); font-size: 12.5px; line-height: 1.5; color: var(--muted); font-style: italic; margin-top: 10px; padding-top: 10px; border-top: .5px solid var(--hairline); }
     .slot-cta { font-size: 9.5px; color: var(--accent-soft); letter-spacing: 2px; text-transform: uppercase; margin-top: 12px; }
-    .active-chip { position: absolute; bottom: calc(74px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: none; align-items: center; gap: 6px; padding: 6px 14px; background: var(--bg-deep); border: .5px solid var(--border); border-radius: 999px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+    /* z-index 3 puts the chip above .nav-zone (z-index 2) — the bottom Capture
+       zone covers this strip, so without it the tap opens Capture, not Challenges. */
+    .active-chip { position: absolute; bottom: calc(74px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 3; cursor: pointer; -webkit-tap-highlight-color: transparent; display: none; align-items: center; gap: 6px; padding: 6px 14px; background: var(--bg-deep); border: .5px solid var(--border); border-radius: 999px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+    .active-chip:active { border-color: var(--accent-soft); }
     .active-chip.show { display: inline-flex; }
     .active-chip i { font-size: 11px; color: var(--accent); }
     .lp-hint { position: absolute; bottom: calc(14px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 9px; color: var(--whisper); letter-spacing: 2px; opacity: .55; white-space: nowrap; }
@@ -406,7 +409,7 @@
         <div class="slot-cta hidden" id="slot-cta">Tap to reflect →</div>
       </div>
     </div>
-    <div class="active-chip" id="active-chip"><i class="ti ti-flame"></i><span id="active-chip-text"></span></div>
+    <div class="active-chip" id="active-chip" role="button" tabindex="0" aria-label="Open challenges"><i class="ti ti-flame"></i><span id="active-chip-text"></span></div>
     <div class="lp-hint" id="lp-hint">LONG PRESS · MENU</div>
   </div>
 
@@ -1267,6 +1270,15 @@
       if(longPressFired) return;
       const dest=ZONE_NAV[z.dataset.edge]; if(dest) navigate(dest[0], dest[1]);
     }));
+
+    // The active-challenge chip is a shortcut into Challenges. stopPropagation
+    // keeps the tap off the bottom Capture zone underneath it.
+    (function(){
+      const chip=document.getElementById('active-chip');
+      const open=e=>{ e.stopPropagation(); if(longPressFired) return; navigate('challenges'); };
+      chip.addEventListener('click', open);
+      chip.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' ') open(e); });
+    })();
 
     function bumpLpHint(){ const n=(+localStorage.getItem('ink_lp_hint_count')||0)+1; localStorage.setItem('ink_lp_hint_count', n); }
     function maybeHideLpHint(){ if((+localStorage.getItem('ink_lp_hint_count')||0)>=5) document.getElementById('lp-hint').classList.add('hidden'); }
