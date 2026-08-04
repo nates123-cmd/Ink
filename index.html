@@ -390,12 +390,12 @@
     </div>
     <div class="nav-zone zone-top" data-edge="top" aria-label="Journal"></div>
     <div class="nav-zone zone-bottom" data-edge="bottom" aria-label="Capture"></div>
-    <div class="nav-zone zone-left" data-edge="left" aria-label="Stoic"></div>
+    <div class="nav-zone zone-left" data-edge="left" aria-label="Meditations"></div>
     <div class="nav-zone zone-right" data-edge="right" aria-label="Mind"></div>
     <div class="edge-label edge-top">JOURNAL ▼</div>
     <!-- Arrows are ▲ in source so that after the CSS rotate(±90deg) on
          .edge-left / .edge-right they visually point left and right. -->
-    <div class="edge-label edge-left">▲ STOIC</div>
+    <div class="edge-label edge-left">▲ MEDITATIONS</div>
     <div class="edge-label edge-right">MIND ▲</div>
     <div class="edge-label edge-bottom">CAPTURE ▲</div>
     <div class="canvas-center">
@@ -474,12 +474,15 @@
     <div class="mind-list" id="mind-list"></div>
   </div>
 
-  <!-- ══ STOIC (swipe left) — sole writer of reflections ══ -->
+  <!-- ══ MEDITATIONS (swipe left) — sole writer of reflections ══
+       User-facing name only. The screen id, the `stoic` reflection tag,
+       `source_surface:'stoic_screen'` and the `?screen=stoic` deeplink stay as
+       they are — they are the data contract shared with ink-mcp and Today. ══ -->
   <div class="screen" id="screen-stoic">
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:10px">
         <button class="icon-btn" id="stoic-back" aria-label="Back"><i class="ti ti-arrow-left"></i></button>
-        <div class="crumb">Stoic Practice</div>
+        <div class="crumb">Meditations</div>
       </div>
       <button class="icon-btn" data-nav="prompt-library" aria-label="Prompt library"><i class="ti ti-bookmarks"></i></button>
     </div>
@@ -1381,7 +1384,7 @@
       let blurb=null; try{ blurb=JSON.parse(localStorage.getItem(cacheKey)||'null'); }catch{}
       if(blurb && blurb.reflection_id===row.id) return blurb;
       const q=pickIntentionQuote(row.text);
-      const line = q ? ('\u201C'+q+'\u201D') : 'You set a Stoic morning intention today. How is that going?';
+      const line = q ? ('\u201C'+q+'\u201D') : 'You set a morning intention today. How is that going?';
       const blurb2={ reflection_id:row.id, line };
       try{ localStorage.setItem(cacheKey, JSON.stringify(blurb2)); }catch{}
       return blurb2;

@@ -42,7 +42,15 @@ The fourth app in the personal OS suite alongside Tick, Break, Tide, Course, Pat
 | **Long-press** canvas | **Options menu** bottom sheet: Settings, Challenges, Habits manage, Prompt Library, Pattern. (No longer opens Journal.) | sheet |
 | ~~`+` button~~ | **Removed** — no unified compose, no Claude parse-and-file. | — |
 
-Edge labels: `▲ CAPTURE` / `JOURNAL ▼` / `◀ STOIC` / `MIND ▶`. Long-press hint copy → "LONG PRESS · MENU". Content-slot priority unchanged (morning intention → mantra → quote); mantra source remains the shared `mantras` table, now fed by Mind's "flag as mantra". Tapping the morning-intention slot routes to Stoic (the reflection surface) rather than the old Reflect.
+**Renamed 2026-08-04: the left screen is "Meditations", not "Stoic".** Display
+name only — edge label, nav-zone `aria-label` and the screen's crumb. Everything
+underneath keeps the old word on purpose: screen id `stoic`, the `stoic`
+reflection tag, `source_surface:'stoic_screen'`, and the `?screen=stoic&stoic=`
+deeplink are the contract Ink shares with `ink-mcp` and Today, so renaming them
+would orphan every existing reflection. Read every `stoic` below as
+"Meditations" in the UI.
+
+Edge labels: `▲ CAPTURE` / `JOURNAL ▼` / `◀ MEDITATIONS` / `MIND ▶`. Long-press hint copy → "LONG PRESS · MENU". Content-slot priority unchanged (morning intention → mantra → quote); mantra source remains the shared `mantras` table, now fed by Mind's "flag as mantra". Tapping the morning-intention slot routes to Stoic (the reflection surface) rather than the old Reflect.
 
 ### Removed
 
