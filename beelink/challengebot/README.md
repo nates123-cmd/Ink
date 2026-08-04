@@ -11,7 +11,9 @@ them write. Nothing here re-derives "is it due", "what day are we on" or
     scp ink-challenge-*.service \
         ink-challenge-*.timer      nate@beelink:~/.config/systemd/user/
     ssh nate@beelink 'systemctl --user daemon-reload && \
-      systemctl --user enable --now ink-challenge-morning.timer ink-challenge-evening.timer'
+      systemctl --user enable --now ink-challenge-morning.timer \
+                                   ink-challenge-timed.timer \
+                                   ink-challenge-evening.timer'
 
 `challengebot.env` (mode 600, never committed) holds:
 
@@ -46,18 +48,34 @@ not. `Linger=yes` is already set for the `nate` user, so no root is involved.
 
 | Unit                          | Fires            | Says |
 |-------------------------------|------------------|------|
-| `ink-challenge-morning.timer` | 07:00 ET         | Everything owed today |
-| `ink-challenge-evening.timer` | 20:00 ET         | Only what is *still* owed |
+| `ink-challenge-morning.timer` | 07:00 ET         | Owed today, and with **no** time of its own |
+| `ink-challenge-timed.timer`   | every 15min ET   | Challenges whose `remind_at` just came round |
+| `ink-challenge-evening.timer` | 20:00 ET         | Everything *still* owed, timed or not |
 | `ink-challenge-poll.service`  | continuous       | Handles Done taps — **disabled**, see below |
 
-Both reminders are silent when nothing is owed. A rest day on a `weekdays`
+Every reminder is silent when nothing is owed. A rest day on a `weekdays`
 challenge, or a `weekly_count` challenge that already hit its target, produces
 no message at all — that is what `due_today` is for.
 
 Dry-run without sending:
 
     python3 challengebot.py morning --dry
+    python3 challengebot.py timed --dry
     python3 challengebot.py evening --dry
+
+## Time of day
+
+`active_challenges.remind_at` is a local wall-clock time, nullable. Blank —
+which is every pre-2026-08-03 row — means "no particular time" and keeps the
+old behaviour exactly: 7am, then 8pm if still open. Set one and the nudge
+*moves* to that hour rather than doubling up: `morning` skips any challenge
+with a time, and `timed` picks it up instead.
+
+`timed` fires for a challenge whose time fell inside the window that just
+elapsed, so **`CHALLENGE_WINDOW_MIN` (default 15) must match the timer's
+period**. Change one without the other and reminders fall between two runs and
+never fire. Catch-up runs are off on purpose (`Persistent=false`); already-sent
+keys live in `state.json` and are pruned to the current local day.
 
 ## LANDMINE — the shared bot token
 

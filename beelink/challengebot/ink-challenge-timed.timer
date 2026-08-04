@@ -1,0 +1,15 @@
+[Unit]
+Description=Ink challenge reminders every 15 minutes, for challenges with a set time
+
+[Timer]
+# Every quarter hour on the quarter. The 15 here IS the window challengebot.py
+# checks remind_at against (CHALLENGE_WINDOW_MIN) — change one and change both,
+# or a reminder falls between two runs and never fires.
+OnCalendar=*-*-* *:00/15:00 America/New_York
+# Deliberately NOT persistent: a 7am nudge delivered at noon because the box
+# was down is noise, and the 8pm sweep still catches whatever is open.
+Persistent=false
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

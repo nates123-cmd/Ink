@@ -315,7 +315,7 @@
     .ch-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
     .ch-title { font-family: var(--serif); font-size: 17px; color: var(--text); }
     .ch-day { font-size: 10.5px; color: var(--whisper); letter-spacing: 1.2px; text-transform: uppercase; white-space: nowrap; }
-    .ch-why { font-family: var(--serif); font-style: italic; font-size: 13.5px; color: var(--muted); margin-top: 5px; line-height: 1.45; }
+    .ch-time { font-size: 11px; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; margin-top: 5px; }
     .ch-meta { font-size: 10.5px; color: var(--whisper); letter-spacing: 1.2px; text-transform: uppercase; margin: 10px 0 12px; }
     /* Week strip — seven taps, Monday first. A hollow dot is a day the cadence
        does not ask for; it still logs, it just never counts against you. */
@@ -720,6 +720,15 @@
     function mondayOf(s){ return addDays(s, 1-isoDow(s)); }
     function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
     function fmtDate(ts){ return new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+    // Postgres hands a `time` back as "07:00:00"; <input type="time"> wants
+    // "07:00" and reads back the same, so both directions go through here.
+    function hhmm(t){ const m=/^(\d{1,2}):(\d{2})/.exec(String(t||'')); return m?String(m[1]).padStart(2,'0')+':'+m[2]:''; }
+    // 12-hour, the way the rest of the suite shows a clock time.
+    function fmtClock(t){
+      const s=hhmm(t); if(!s) return '';
+      let h=+s.slice(0,2); const ap=h<12?'AM':'PM'; h=h%12||12;
+      return h+':'+s.slice(3)+' '+ap;
+    }
     function arr(x){ return Array.isArray(x) ? x : (x ? [x] : []); }
 
     // ── Rich text (notepad-lite) ──
@@ -2235,10 +2244,11 @@
           if(c.streak>0) bits.push(c.streak+(c.cadence==='weekly_count'?' week streak':' day streak'));
           if(c.cadence==='weekly_count') bits.push(c.week_done+' of '+(c.week_target||1)+' this week');
           bits.push(c.days_done+' logged');
+          const at=fmtClock(c.remind_at);
           return '<div class="ch-card'+(c.done_today?' done':'')+'" data-i="'+i+'">'+
             '<div class="ch-head"><div class="ch-title">'+esc(c.title)+'</div>'+
               '<div class="ch-day">Day '+c.day_number+esc(len)+'</div></div>'+
-            (c.why?'<div class="ch-why">'+esc(c.why)+'</div>':'')+
+            (at?'<div class="ch-time">'+esc(at)+'</div>':'')+
             weekStrip(c, logged)+
             '<div class="ch-meta">'+esc(bits.join(' · '))+'</div>'+
             '<button class="btn '+(c.done_today||!c.due_today?'btn-secondary':'btn-primary')+' ch-check" data-i="'+i+'">'+
@@ -2324,9 +2334,9 @@
       const wd=new Set(editing&&c.cadence==='weekdays'?(c.weekdays||[]):[1,2,3,4,5]);
       showModal('<h4>'+(editing?'Edit challenge':'New challenge')+'</h4>'+
         '<div class="field-block"><label>What are you doing</label>'+
-          '<input class="input" id="ch-title" placeholder="Walk" value="'+esc(editing?c.title:'')+'" /></div>'+
-        '<div class="field-block"><label>Why</label>'+
-          '<input class="input" id="ch-why" placeholder="stop drifting through the morning" value="'+esc(editing&&c.why?c.why:'')+'" /></div>'+
+          '<input class="input" id="ch-title" value="'+esc(editing?c.title:'')+'" /></div>'+
+        '<div class="field-block"><label>What time (blank = no set time)</label>'+
+          '<input class="input" id="ch-time" type="time" value="'+esc(hhmm(editing?c.remind_at:null))+'" /></div>'+
         '<div class="field-block"><label>How often</label>'+
           '<div class="cad-seg" id="ch-cad">'+
             '<button data-c="daily">Every day</button>'+
@@ -2335,7 +2345,7 @@
           '<div class="cad-days" id="ch-wd">'+WD_LABELS.map(([n,l])=>
             '<button data-n="'+n+'">'+l+'</button>').join('')+'</div>'+
           '<input class="input" id="ch-per" type="number" inputmode="numeric" min="1" max="7" '+
-            'style="margin-top:10px" placeholder="how many times a week" value="'+
+            'style="margin-top:10px" placeholder="times a week" value="'+
             esc(editing&&c.week_target?c.week_target:'')+'" /></div>'+
         '<div class="field-block"><label>How many days (blank = open-ended)</label>'+
           '<input class="input" id="ch-days" type="number" inputmode="numeric" min="1" placeholder="open-ended" value="'+esc(editing&&c.days?c.days:'')+'" /></div>'+
@@ -2359,14 +2369,16 @@
         document.getElementById('sheet-cancel').addEventListener('click', hideModal);
         document.getElementById('sheet-primary').addEventListener('click', async ()=>{
           const title=document.getElementById('ch-title').value.trim();
-          const why=document.getElementById('ch-why').value.trim();
+          // A blank time is a real answer — "no particular hour" — so it has to
+          // clear the column on edit rather than be skipped.
+          const remindAt=document.getElementById('ch-time').value.trim();
           const daysRaw=document.getElementById('ch-days').value.trim();
           const days=daysRaw?Math.max(1, parseInt(daysRaw,10)||0):null;
           const perWeek=Math.min(7, Math.max(1, parseInt(per.value,10)||0));
           if(!title) return showToast('Give it a name');
           if(cad==='weekdays' && !wd.size) return showToast('Pick at least one day');
           if(cad==='weekly_count' && !per.value.trim()) return showToast('How many times a week?');
-          const body={title, why:why||null, days, cadence:cad,
+          const body={title, remind_at:remindAt||null, days, cadence:cad,
             weekdays: cad==='weekdays'?[...wd].sort((a,b)=>a-b):null,
             per_week: cad==='weekly_count'?perWeek:null};
           try{

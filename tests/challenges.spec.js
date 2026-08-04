@@ -19,7 +19,7 @@ function stubChallenges(page, { doneToday = false, extra = {}, weekLogs = [] } =
         window.__sbCalls.push({ path, method: opts.method || 'GET', body: opts.body || null });
         if (path.startsWith('challenges_today')) {
           return new Response(JSON.stringify([{
-            id: 'ch1', title: '10 minute brain sesh', why: 'stop drifting', days: null,
+            id: 'ch1', title: '10 minute brain sesh', remind_at: '07:00:00', days: null,
             start_date: '2026-07-25', day_number: 7, done_today: done, days_done: 5, streak: 3,
             cadence: 'daily', weekdays: [1, 2, 3, 4, 5, 6, 7], week_target: null,
             due_today: true, week_start: '2026-07-27', week_done: 2, today_local: '2026-07-31',
@@ -41,13 +41,13 @@ function stubChallenges(page, { doneToday = false, extra = {}, weekLogs = [] } =
 
 test.beforeEach(async ({ page }) => { await seedSession(page); });
 
-test('a live challenge shows its day, streak and reason from the view', async ({ page }) => {
+test('a live challenge shows its day, streak and time from the view', async ({ page }) => {
   await stubChallenges(page);
   await boot(page);
   await page.evaluate(async () => { navigate('challenges'); await loadChallenges(); });
   await expect(page.locator('.ch-title')).toHaveText('10 minute brain sesh');
   await expect(page.locator('.ch-day')).toHaveText('Day 7');       // open-ended: no "of N"
-  await expect(page.locator('.ch-why')).toHaveText('stop drifting');
+  await expect(page.locator('.ch-time')).toHaveText('7:00 AM');
   await expect(page.locator('.ch-meta')).toContainText('3 day streak');
   await expect(page.locator('.ch-check')).toHaveText('Mark today done');
   await expect(page.locator('.ch-past')).toContainText('Cold Shower');
@@ -78,11 +78,12 @@ test('a custom challenge can be open-ended', async ({ page }) => {
   await page.evaluate(async () => { navigate('challenges'); await loadChallenges(); });
   await page.locator('#challenge-new').click();
   await page.locator('#ch-title').fill('10 minute brain sesh');
-  await page.locator('#ch-why').fill('stop drifting');
+  await page.locator('#ch-time').fill('07:00');
   await page.locator('#sheet-primary').click();
   const post = await page.evaluate(() => window.__sbCalls.find((c) => c.path === 'active_challenges' && c.method === 'POST'));
   const body = JSON.parse(post.body);
   expect(body.title).toBe('10 minute brain sesh');
+  expect(body.remind_at).toBe('07:00');
   expect(body.days).toBeNull();
   expect(body.completed).toBe(false);
 });
@@ -224,6 +225,7 @@ test('a plain daily challenge still saves as daily', async ({ page }) => {
   expect(body.cadence).toBe('daily');
   expect(body.days).toBe(7);
   expect(body.weekdays).toBeNull();
+  expect(body.remind_at).toBeNull();   // blank time = no particular hour
 });
 
 test('the test notification posts no user_id, so it can only reach your own devices', async ({ page }) => {

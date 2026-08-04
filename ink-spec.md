@@ -101,7 +101,7 @@ A challenge is **a push you are consciously running**, not a routine. Habits sta
 
 Ink's challenges were a Still carryover: opt in to one of 15 hardcoded presets, and a read-only list. `active_challenges` now also carries `title`, `why`, `days` (null = open-ended) and `user_id`; `challenge_logs` carries `note` and `user_id`; both get per-user RLS. Preset opt-ins keep working — the view falls back to the `challenge_key` for a title. Migration: `supabase/migrations/challenges_engine.sql`.
 
-**The screen.** Live challenges as cards: title, why, `Day N of M` (or just `Day N` when open-ended), streak and days logged, one big check-in button, and Edit / Finish / Drop. Check-in is a `challenge_logs` row per day, so un-checking is a delete, not a flag. **Finish** keeps the record and asks what came of it (`outcome_note`); **Drop** removes it and its check-ins. The home chip shows the first live challenge, its day, and whether today is still open.
+**The screen.** Live challenges as cards: title, its time if it has one, `Day N of M` (or just `Day N` when open-ended), streak and days logged, one big check-in button, and Edit / Finish / Drop. Check-in is a `challenge_logs` row per day, so un-checking is a delete, not a flag. **Finish** keeps the record and asks what came of it (`outcome_note`); **Drop** removes it and its check-ins. The home chip shows the first live challenge, its day, and whether today is still open.
 
 **`challenges_today` — the suite contract.** One view, four readers. It exposes `title`, `why`, `days`, `day_number`, `days_done`, `done_today` and `streak` for every incomplete challenge, so nothing re-derives them:
 
@@ -113,6 +113,10 @@ Ink's challenges were a Still carryover: opt in to one of 15 hardcoded presets, 
 | Break | An occasional feed nudge while today's check-in is open, tickable from the card |
 
 The view is `security_invoker = on` — without it a view runs as its owner and would leak across users. Streak counts consecutive logged days ending today, or ending yesterday while today is still open, so a streak doesn't break until midnight. Verified against a real Postgres (PGlite) in `tests/challenges-view.test.mjs`.
+
+**Time of day (added 2026-08-03).** `active_challenges.remind_at` is a local wall-clock time, nullable — blank means "no particular hour", which is what every pre-existing row is. The form asks for it right under the title; the card shows it; the Beelink reminder fires at that hour instead of the 7am sweep (`supabase/migrations/challenges_time.sql`, appended to the view after `today_local`).
+
+**`why` is gone from the surface.** The field asked for a reason at the moment you had the least to say, and no card ever earned its space. The column and the view stay — old rows still hold text and the view's first thirteen columns cannot be reordered — but Ink no longer writes or shows it.
 
 ### Push to Course (v1 — via Course's inbox)
 
